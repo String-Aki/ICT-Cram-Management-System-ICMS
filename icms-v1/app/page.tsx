@@ -1,20 +1,21 @@
-import AttendanceScanner from "../src/components/AttendanceScanner";
-import IDCardGenerator from "../src/components/IDCardGenerator";
-
-export default function Home() {
+export default function Dashboard() {
   return (
-    <main className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold text-blue-600 mb-2">ICMS v1.0</h1>
-        <p className="text-gray-600">Scan student ID to record attendance</p>
-      </div>
-
-      <AttendanceScanner />
-      <div className="mt-8">
-        <IDCardGenerator
-          studentName="John Doe"
-          studentId="uuid-1234-5678-9012"
-        />
+    <main className="p-4 md:p-8">
+      <h1 className="text-3xl font-bold text-gray-800 mb-6">Tuition Center Dashboard</h1>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Placeholder Stat Cards */}
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 className="text-gray-500 font-medium">Today's Attendance</h3>
+          <p className="text-4xl font-bold text-blue-600 mt-2">--</p>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 className="text-gray-500 font-medium">Pending Stickers</h3>
+          <p className="text-4xl font-bold text-orange-500 mt-2">--</p>
+        </div>
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+          <h3 className="text-gray-500 font-medium">Offline Scans Pending</h3>
+          <p className="text-4xl font-bold text-red-500 mt-2">--</p>
+        </div>
       </div>
     </main>
   );
