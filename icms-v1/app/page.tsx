@@ -1,4 +1,5 @@
 import AttendanceScanner from "../src/components/AttendanceScanner";
+import IDCardGenerator from "../src/components/IDCardGenerator";
 
 export default function Home() {
   return (
@@ -9,7 +10,12 @@ export default function Home() {
       </div>
 
       <AttendanceScanner />
-      
+      <div className="mt-8">
+        <IDCardGenerator
+          studentName="John Doe"
+          studentId="uuid-1234-5678-9012"
+        />
+      </div>
     </main>
   );
 }
