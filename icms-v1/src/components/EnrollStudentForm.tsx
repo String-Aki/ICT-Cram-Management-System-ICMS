@@ -1,23 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { useRouter } from "next/navigation";
+import { toPng } from "html-to-image";
+import QRCode from "qrcode";
+import { League_Spartan, Prata } from "next/font/google";
+
+const leagueSpartan = League_Spartan({ subsets: ["latin"], weight: ["400", "700", "800"] });
+const prata = Prata({ subsets: ["latin"], weight: ["400"] });
+
+interface EnrolledStudent {
+  fullName: string;
+  gradeBatch: string;
+  shortId: string;
+  variant: number;
+}
 
 export default function EnrollStudentForm() {
   const router = useRouter();
+  // Form States
   const [fullName, setFullName] = useState("");
   const [gradeBatch, setGradeBatch] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // ID Card Generation States
+  const [newStudent, setNewStudent] = useState<EnrolledStudent | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+  
+  const frontCardRef = useRef<HTMLDivElement>(null);
+  const backCardRef = useRef<HTMLDivElement>(null);
 
   const handleEnrollment = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMsg("");
     setStatusMessage("Enrolling student...");
 
-    const shortId =
-      "ITMS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const shortId = "ICMS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+    const rolledVariant = Math.floor(Math.random() * 6) + 1;
 
     try {
       const { data, error } = await supabase
@@ -27,21 +51,27 @@ export default function EnrollStudentForm() {
             full_name: fullName,
             grade_batch: gradeBatch,
             qr_code: shortId,
+            card_variant: rolledVariant,
           },
         ])
         .select();
 
       if (error) throw error;
 
-      // 3. Success!
-      setStatusMessage(
-        `✅ Successfully enrolled ${fullName}! QR Code: ${shortId}`,
-      );
+      const qrImage = await QRCode.toDataURL(shortId, { margin: 0, width: 200 });
+      setQrDataUrl(qrImage);
+
+      setNewStudent({
+        fullName,
+        gradeBatch,
+        shortId,
+        variant: rolledVariant,
+      });
+
       setFullName("");
       setGradeBatch("");
       router.refresh();
 
-      // TODO: We will trigger the ID Card PDF generation here next!
     } catch (error: any) {
       console.error(error);
       setStatusMessage(
@@ -52,59 +82,153 @@ export default function EnrollStudentForm() {
     }
   };
 
+  const exportCard = async (cardElement: HTMLDivElement | null, fileName: string) => {
+    if (!cardElement) return;
+    const dataUrl = await toPng(cardElement, { cacheBust: true, pixelRatio: 4 });
+    const link = document.createElement("a");
+    link.download = fileName;
+    link.href = dataUrl;
+    link.click();
+  };
+
+  const handleExportBoth = async () => {
+    if (!newStudent) return;
+    setIsExporting(true);
+    try {
+      const safeName = newStudent.fullName.replace(/\s+/g, '_');
+      await exportCard(frontCardRef.current, `${safeName}_ID_Front.png`);
+      
+      setTimeout(async () => {
+        await exportCard(backCardRef.current, `${safeName}_ID_Back_v${newStudent.variant}.png`);
+        setIsExporting(false);
+      }, 500);
+      
+    } catch (err) {
+      console.error("Failed to export images", err);
+      setIsExporting(false);
+    }
+  };
+
+  const closePrintRoom = () => {
+    setNewStudent(null);
+    setQrDataUrl("");
+  };
+
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 max-w-md w-full">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">New Admission</h2>
+    <>
+      {newStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4">
+          <div className="bg-white p-8 md:p-12 rounded-3xl shadow-2xl flex flex-col items-center max-w-5xl w-full border border-slate-200">
+            
+            <div className="text-center mb-10">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+                <span className="text-3xl">🎉</span>
+              </div>
+              <h2 className="text-3xl font-bold text-slate-800">Student Enrolled Successfully!</h2>
+              <p className="text-slate-500 mt-2">ID cards have been generated and are ready for printing.</p>
+            </div>
 
-      <form onSubmit={handleEnrollment} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Full Name
-          </label>
-          <input
-            type="text"
-            required
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-            placeholder="e.g. Jane Doe"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-          />
-        </div>
+            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center mb-12">
+              
+              {/* --- FRONT CARD --- */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-slate-400 font-bold tracking-widest text-sm">FRONT</span>
+                <div ref={frontCardRef} className="relative bg-white overflow-hidden shadow-2xl rounded-sm" style={{ width: "324px", height: "204px" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/id-front.jpg" alt="Front" className="absolute inset-0 w-full h-full object-cover z-0" />
+                  
+                  <div className="absolute z-10 top-[42px] left-[190px] flex flex-col gap-6">
+                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
+                      {newStudent.fullName}
+                    </p>
+                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
+                      {newStudent.gradeBatch}
+                    </p>
+                  </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Grade / Batch
-          </label>
-          <input
-            type="text"
-            required
-            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
-            placeholder="e.g. 2026 - A Level Physics"
-            value={gradeBatch}
-            onChange={(e) => setGradeBatch(e.target.value)}
-          />
-        </div>
+                  <div className="absolute z-10 bottom-[35px] left-[100px]">
+                     <p className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}>
+                       {newStudent.shortId}
+                     </p>
+                  </div>
 
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className={`w-full p-3 text-white font-bold rounded-lg transition-all ${
-            isSubmitting
-              ? "bg-blue-400 cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-700"
-          }`}
-        >
-          {isSubmitting ? "Processing..." : "Enroll Student"}
-        </button>
-      </form>
+                  {qrDataUrl && (
+                    <div className="absolute z-10 top-[30px] left-[30px] w-[80px] h-[80px] bg-white p-1 rounded">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qrDataUrl} alt="QR" className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                </div>
+              </div>
 
-      {statusMessage && (
-        <div
-          className={`mt-4 p-3 rounded-lg text-sm text-center ${statusMessage.includes("✅") ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}
-        >
-          {statusMessage}
+              {/* --- BACK CARD --- */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-yellow-600 font-bold tracking-widest text-sm">BACK (Variant {newStudent.variant})</span>
+                <div ref={backCardRef} className="relative bg-white overflow-hidden shadow-2xl rounded-sm" style={{ width: "324px", height: "204px" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/id-back-${newStudent.variant}.jpg`} alt="Back" className="absolute inset-0 w-full h-full object-cover z-0" />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Modal Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center max-w-md">
+              <button 
+                onClick={handleExportBoth} disabled={isExporting}
+                className={`flex-1 py-4 px-6 text-white font-bold rounded-xl transition-all ${isExporting ? "bg-slate-400 cursor-wait" : "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/30 hover:-translate-y-1"}`}
+              >
+                {isExporting ? "Generating High-Res..." : "⬇️ Download ID Cards"}
+              </button>
+              
+              <button 
+                onClick={closePrintRoom}
+                className="py-4 px-6 font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all hover:-translate-y-1"
+              >
+                Close & Next Student
+              </button>
+            </div>
+
+          </div>
         </div>
       )}
-    </div>
+
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
+        <h2 className="text-2xl font-bold text-slate-800 mb-6">New Admission</h2>
+        
+        <form onSubmit={handleEnrollment} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+            <input
+              type="text" required
+              className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="e.g. Bruce Wayne"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Grade / Batch</label>
+            <input
+              type="text" required
+              className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+              placeholder="e.g. 10"
+              value={gradeBatch}
+              onChange={(e) => setGradeBatch(e.target.value)}
+            />
+          </div>
+
+          <button
+            type="submit" disabled={isSubmitting}
+            className={`w-full p-3 text-white font-bold rounded-lg transition-all ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md"}`}
+          >
+            {isSubmitting ? "Enrolling..." : "Enroll Student"}
+          </button>
+        </form>
+
+        {errorMsg && <div className="mt-4 p-3 rounded-lg text-sm text-center bg-red-50 text-red-700 border border-red-100">{errorMsg}</div>}
+      </div>
+    </>
   );
 }
