@@ -17,13 +17,35 @@ interface EnrolledStudent {
   variant: number;
 }
 
+const getMonthLetters = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
+  const monthName = months[date.getMonth()];
+  return `${monthName.charAt(0)}${monthName.charAt(monthName.length - 1)}`;
+};
+
+const getSequenceString = (existingCount: number) => {
+  if (existingCount < 99) {
+    return (existingCount + 1).toString().padStart(2, '0');
+  } else {
+    const overflow = existingCount - 99;
+    const numberPrefix = Math.floor(overflow / 26) + 1;
+    const letterSuffix = String.fromCharCode(65 + (overflow % 26));
+    return `${numberPrefix}${letterSuffix}`;
+  }
+};
+
 export default function EnrollStudentForm() {
   const router = useRouter();
   // Form States
   const [fullName, setFullName] = useState("");
   const [gradeBatch, setGradeBatch] = useState("");
+  const [medium, setMedium] = useState<"E" | "T">("E");
+
+  const getTodayString = () => new Date().toISOString().split("T")[0];
+  const [enrollDate, setEnrollDate] = useState(getTodayString());
+
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
   // ID Card Generation States
@@ -38,33 +60,45 @@ export default function EnrollStudentForm() {
     e.preventDefault();
     setIsSubmitting(true);
     setErrorMsg("");
-    setStatusMessage("Enrolling student...");
 
     const shortId = "ICMS-" + Math.random().toString(36).substring(2, 8).toUpperCase();
     const rolledVariant = Math.floor(Math.random() * 6) + 1;
 
     try {
-      const { data, error } = await supabase
+      const dayStr = enrollDate.split("-")[2];
+      const monthLetters = getMonthLetters(enrollDate);
+      const dateCode = `${dayStr}${monthLetters}`;
+      const idPrefix = `ICMS-${medium}-${dateCode}`;
+      
+      const { count, error: countError } = await supabase
         .from("students")
-        .insert([
-          {
+        .select("*", { count: "exact", head: true });
+
+      if (countError) throw countError;
+
+      const sequence = getSequenceString(count || 0);
+      const finalShortId = `${idPrefix}${sequence}`;
+      const rolledVariant = Math.floor(Math.random() * 6) + 1; 
+
+      const { error: insertError } = await supabase
+        .from("students")
+        .insert([{
             full_name: fullName,
             grade_batch: gradeBatch,
-            qr_code: shortId,
+            qr_code: finalShortId,
             card_variant: rolledVariant,
-          },
-        ])
-        .select();
+            enrollment_date: enrollDate,
+        }]);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
-      const qrImage = await QRCode.toDataURL(shortId, { margin: 0, width: 200 });
+      const qrImage = await QRCode.toDataURL(finalShortId, { margin: 0, width: 200 });
       setQrDataUrl(qrImage);
 
       setNewStudent({
         fullName,
         gradeBatch,
-        shortId,
+        shortId: finalShortId,
         variant: rolledVariant,
       });
 
@@ -74,9 +108,7 @@ export default function EnrollStudentForm() {
 
     } catch (error: any) {
       console.error(error);
-      setStatusMessage(
-        `❌ Error: ${error?.message || "Failed to enroll student"}`,
-      );
+      setErrorMsg(`❌ Error: ${error?.message || "Failed to enroll student. Ensure database is connected."}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -146,7 +178,7 @@ export default function EnrollStudentForm() {
                     </p>
                   </div>
 
-                  <div className="absolute z-10 bottom-[35px] left-[100px]">
+                  <div className="absolute z-10 bottom-[35px] left-[95px]">
                      <p className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}>
                        {newStudent.shortId}
                      </p>
@@ -196,7 +228,41 @@ export default function EnrollStudentForm() {
       <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
         <h2 className="text-2xl font-bold text-slate-800 mb-6">New Admission</h2>
         
-        <form onSubmit={handleEnrollment} className="space-y-4">
+        <form onSubmit={handleEnrollment} className="space-y-5">
+          
+          {/* Medium Toggle */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Class Medium</label>
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button type="button" onClick={() => setMedium("E")} className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${medium === "E" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                English
+              </button>
+              <button type="button" onClick={() => setMedium("T")} className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${medium === "T" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>
+                Tamil
+              </button>
+            </div>
+          </div>
+
+          {/* Date Picker */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">Date of Enrollment</label>
+            <div className="flex gap-2">
+              <input
+                type="date" required
+                className="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all"
+                value={enrollDate}
+                onChange={(e) => setEnrollDate(e.target.value)}
+              />
+              <button 
+                type="button" 
+                onClick={() => setEnrollDate(getTodayString())}
+                className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors border border-slate-200 text-sm"
+              >
+                Today
+              </button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
             <input
@@ -221,9 +287,9 @@ export default function EnrollStudentForm() {
 
           <button
             type="submit" disabled={isSubmitting}
-            className={`w-full p-3 text-white font-bold rounded-lg transition-all ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md"}`}
+            className={`w-full p-3 text-white font-bold rounded-lg transition-all mt-2 ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md"}`}
           >
-            {isSubmitting ? "Enrolling..." : "Enroll Student"}
+            {isSubmitting ? "Generating ID..." : "Enroll Student"}
           </button>
         </form>
 

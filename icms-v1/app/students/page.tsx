@@ -24,7 +24,7 @@ export default async function StudentsDirectory() {
           <EnrollStudentForm />
         </section>
 
-        <section className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[500px]">
+        <section className="md:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col h-[535px]">
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
             🎓 Enrolled Students{" "}
             <span className="text-sm font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
