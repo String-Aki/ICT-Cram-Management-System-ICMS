@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 export default function Sidebar() {
   const pathname = usePathname();
 
-  // Added the Schedule link here!
   const navLinks = [
     { name: "Dashboard", href: "/", icon: "📊" },
     { name: "Attendance", href: "/attendance", icon: "✅" },
@@ -18,13 +17,11 @@ export default function Sidebar() {
   return (
     <nav className="bg-blue-900 text-white w-full md:w-64 flex-shrink-0 md:h-screen sticky top-0 md:flex md:flex-col z-50">
       <div className="p-4 md:p-6 text-center md:text-left border-b border-blue-800">
-        {/* Fixed ITMS to ICMS */}
         <h1 className="text-2xl font-bold tracking-wider">ICMS <span className="text-blue-400">v1.0</span></h1>
       </div>
       
       <ul className="flex md:flex-col overflow-x-auto md:overflow-visible p-2 md:p-4 gap-2 scrollbar-hide">
         {navLinks.map((link) => {
-          // Check if we are exactly on the path, or if we are in a sub-path
           const isActive = pathname === link.href || (pathname.startsWith(link.href) && link.href !== "/");
           
           return (

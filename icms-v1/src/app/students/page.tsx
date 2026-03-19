@@ -1,5 +1,5 @@
-import EnrollStudentForm from "@/src/components//EnrollStudentForm";
-import { supabase } from "@/src/lib/supabase";
+import EnrollStudentForm from "@/components//EnrollStudentForm";
+import { supabase } from "@/lib/supabase";
 export const dynamic = "force-dynamic";
 
 export default async function StudentsDirectory() {

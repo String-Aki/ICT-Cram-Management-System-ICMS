@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AttendanceScanner from "@/src/components/AttendanceScanner";
-import { supabase } from "@/src/lib/supabase";
+import AttendanceScanner from "@/components/AttendanceScanner";
+import { supabase } from "@/lib/supabase";
 
 export default function AttendanceKiosk() {
   const [lastScanned, setLastScanned] = useState<any | null>(null);

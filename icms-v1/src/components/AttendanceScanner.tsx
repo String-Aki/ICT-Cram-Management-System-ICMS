@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Scanner, outline } from "@yudiel/react-qr-scanner";
-import { supabase } from "../lib/supabase";
-import { localDB } from "../lib/localdb"; 
+import { supabase } from "@/lib/supabase";
+import { localDB } from "@/lib/localdb"; 
 
 interface AttendanceScannerProps {
   classStartTime: string | null;
