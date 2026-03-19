@@ -1,4 +1,4 @@
-import EnrollStudentForm from "../../src/components//EnrollStudentForm";
+import EnrollStudentForm from "@/src/components//EnrollStudentForm";
 import { supabase } from "@/src/lib/supabase";
 export const dynamic = "force-dynamic";
 
