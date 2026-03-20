@@ -11,11 +11,11 @@ export default function Sidebar() {
     { name: "Attendance", href: "/attendance", icon: "✅" },
     { name: "Students", href: "/students", icon: "🎓" },
     { name: "Schedule", href: "/schedule", icon: "📅" }, 
-    { name: "Gamification", href: "/gamification", icon: "⭐" },
+    { name: "Leaderboard", href: "/leaderboard", icon: "🏆" },
   ];
 
   return (
-    <nav className="bg-blue-900 text-white w-full md:w-64 flex-shrink-0 md:h-screen sticky top-0 md:flex md:flex-col z-50">
+    <nav className="bg-blue-900 text-white w-full md:w-64 flex-shrink-0 md:h-screen sticky top-0 md:flex md:flex-col z-50 print:hidden">
       <div className="p-4 md:p-6 text-center md:text-left border-b border-blue-800">
         <h1 className="text-2xl font-bold tracking-wider">ICMS <span className="text-blue-400">v1.0</span></h1>
       </div>
