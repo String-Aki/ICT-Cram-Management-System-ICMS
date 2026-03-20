@@ -18,6 +18,16 @@ interface EnrolledStudent {
   pin: string;
 }
 
+// --- THE SMART INITIALS HELPER ---
+const formatNameWithInitials = (fullName: string): string => {
+  if (!fullName) return "";
+  const words = fullName.trim().split(/\s+/);
+  if (words.length <= 2) return fullName;
+  const lastNames = words.slice(-2).join(" ");
+  const initials = words.slice(0, -2).map(word => word.charAt(0).toUpperCase() + ".").join(" ");
+  return `${initials} ${lastNames}`;
+};
+
 const getMonthLetters = (dateStr: string) => {
   const date = new Date(dateStr);
   const months = ["JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"];
@@ -180,10 +190,13 @@ export default function EnrollStudentForm() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/id-front.jpg" alt="Front" className="absolute inset-0 w-full h-full object-cover z-0" />
                   
-                  <div className="absolute z-10 top-[42px] left-[190px] flex flex-col gap-6">
-                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
-                      {newStudent.fullName}
+                  <div className="absolute z-10 top-[42px] left-[190px] w-[110px]">
+                    <p className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}>
+                      {formatNameWithInitials(newStudent.fullName)}
                     </p>
+                  </div>
+
+                  <div className="absolute z-10 top-[80px] left-[190px]">
                     <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
                       {newStudent.gradeBatch}
                     </p>
