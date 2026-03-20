@@ -122,7 +122,7 @@ export default function GamificationHub() {
                   <th className="p-4 font-bold w-16 text-center">#</th>
                   <th className="p-4 font-bold">Student</th>
                   <th className="p-4 font-bold">Current Rank</th>
-                  <th className="p-4 font-bold w-1/3 min-w-[200px]">Next Rank Progress</th>
+                  <th className="p-4 font-bold w-1/3 min-w-50">Next Rank Progress</th>
                   <th className="p-4 font-bold text-right">Total XP</th>
                 </tr>
               </thead>
