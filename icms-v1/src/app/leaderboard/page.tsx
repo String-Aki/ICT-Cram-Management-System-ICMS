@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import SNT from "@/components/StudentNameTransformer";
 
 // --- The Rank Engine Math ---
 const RANKS = [
@@ -136,7 +137,7 @@ export default function GamificationHub() {
                         {index + 1}
                       </td>
                       <td className="p-4">
-                        <p className="font-bold text-slate-800 text-lg">{student.full_name}</p>
+                        <p className="font-bold text-slate-800 text-lg">{SNT(student.full_name)}</p>
                         <p className="text-xs font-bold text-slate-400 tracking-wider uppercase mt-0.5">{student.grade_batch}</p>
                       </td>
                       <td className="p-4">

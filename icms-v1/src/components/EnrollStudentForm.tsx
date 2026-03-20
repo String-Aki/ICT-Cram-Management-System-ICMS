@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/lib/supabase"; 
 import { useRouter } from "next/navigation";
+import SNT  from "@/components/StudentNameTransformer"
 import { toPng } from "html-to-image";
 import QRCode from "qrcode";
 import { League_Spartan, Prata } from "next/font/google";
@@ -17,16 +18,6 @@ interface EnrolledStudent {
   variant: number;
   pin: string;
 }
-
-// --- THE SMART INITIALS HELPER ---
-const formatNameWithInitials = (fullName: string): string => {
-  if (!fullName) return "";
-  const words = fullName.trim().split(/\s+/);
-  if (words.length <= 2) return fullName;
-  const lastNames = words.slice(-2).join(" ");
-  const initials = words.slice(0, -2).map(word => word.charAt(0).toUpperCase() + ".").join(" ");
-  return `${initials} ${lastNames}`;
-};
 
 const getMonthLetters = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -192,7 +183,7 @@ export default function EnrollStudentForm() {
                   
                   <div className="absolute z-10 top-[42px] left-[190px] w-[110px]">
                     <p className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}>
-                      {formatNameWithInitials(newStudent.fullName)}
+                      {SNT(newStudent.fullName)}
                     </p>
                   </div>
 
