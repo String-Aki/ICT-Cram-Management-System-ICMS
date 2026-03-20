@@ -12,6 +12,7 @@ export default function Sidebar() {
     { name: "Students", href: "/students", icon: "🎓" },
     { name: "Schedule", href: "/schedule", icon: "📅" }, 
     { name: "Leaderboard", href: "/leaderboard", icon: "🏆" },
+    { name: "Achievements", href: "/achievements", icon: "⭐" },
   ];
 
   return (
