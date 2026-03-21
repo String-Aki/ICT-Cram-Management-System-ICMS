@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { supabase } from "@/lib/supabase"; 
 import { useRouter } from "next/navigation";
-import SNT  from "@/components/StudentNameTransformer"
-import { toPng } from "html-to-image";
 import QRCode from "qrcode";
 import { League_Spartan, Prata } from "next/font/google";
+import SNT from "@/components/StudentNameTransformer";
 
 const leagueSpartan = League_Spartan({ subsets: ["latin"], weight: ["400", "700", "800"] });
 const prata = Prata({ subsets: ["latin"], weight: ["400"] });
@@ -52,10 +51,6 @@ export default function EnrollStudentForm() {
 
   const [newStudent, setNewStudent] = useState<EnrolledStudent | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const [isExporting, setIsExporting] = useState(false);
-  
-  const frontCardRef = useRef<HTMLDivElement>(null);
-  const backCardRef = useRef<HTMLDivElement>(null);
 
   const handleEnrollment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +75,7 @@ export default function EnrollStudentForm() {
       const finalShortId = `${idPrefix}${sequence}`;
       const rolledVariant = Math.floor(Math.random() * 6) + 1; 
 
-      const { error: insertError } = await supabase
+      const { data: studentData, error: insertError } = await supabase
         .from("students")
         .insert([{
             full_name: fullName,
@@ -89,9 +84,19 @@ export default function EnrollStudentForm() {
             card_variant: rolledVariant,
             enrollment_date: enrollDate,
             pin_code: generatedPin,
-        }]);
+        }])
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      if (studentData) {
+        const { error: queueError } = await supabase
+          .from("card_print_queue")
+          .insert([{ student_id: studentData.id }]);
+        
+        if (queueError) console.error("Failed to queue card:", queueError);
+      }
 
       const qrImage = await QRCode.toDataURL(finalShortId, { margin: 0, width: 200 });
       setQrDataUrl(qrImage);
@@ -113,33 +118,6 @@ export default function EnrollStudentForm() {
       setErrorMsg(`❌ Error: ${error?.message || "Failed to enroll student. Ensure database is connected."}`);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const exportCard = async (cardElement: HTMLDivElement | null, fileName: string) => {
-    if (!cardElement) return;
-    const dataUrl = await toPng(cardElement, { cacheBust: true, pixelRatio: 4 });
-    const link = document.createElement("a");
-    link.download = fileName;
-    link.href = dataUrl;
-    link.click();
-  };
-
-  const handleExportBoth = async () => {
-    if (!newStudent) return;
-    setIsExporting(true);
-    try {
-      const safeName = newStudent.fullName.replace(/\s+/g, '_');
-      await exportCard(frontCardRef.current, `${safeName}_ID_Front.png`);
-      
-      setTimeout(async () => {
-        await exportCard(backCardRef.current, `${safeName}_ID_Back_v${newStudent.variant}.png`);
-        setIsExporting(false);
-      }, 500);
-      
-    } catch (err) {
-      console.error("Failed to export images", err);
-      setIsExporting(false);
     }
   };
 
@@ -176,8 +154,8 @@ export default function EnrollStudentForm() {
               
               {/* --- FRONT CARD --- */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-slate-400 font-bold tracking-widest text-sm">FRONT</span>
-                <div ref={frontCardRef} className="relative bg-white overflow-hidden shadow-2xl rounded-sm" style={{ width: "324px", height: "204px" }}>
+                <span className="text-slate-400 font-bold tracking-widest text-sm">FRONT PREVIEW</span>
+                <div className="relative bg-white overflow-hidden shadow-xl rounded-sm" style={{ width: "324px", height: "204px" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src="/id-front.jpg" alt="Front" className="absolute inset-0 w-full h-full object-cover z-0" />
                   
@@ -210,8 +188,8 @@ export default function EnrollStudentForm() {
 
               {/* --- BACK CARD --- */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-yellow-600 font-bold tracking-widest text-sm">BACK (Variant {newStudent.variant})</span>
-                <div ref={backCardRef} className="relative bg-white overflow-hidden shadow-2xl rounded-sm" style={{ width: "324px", height: "204px" }}>
+                <span className="text-yellow-600 font-bold tracking-widest text-sm">BACK PREVIEW (Variant {newStudent.variant})</span>
+                <div className="relative bg-white overflow-hidden shadow-xl rounded-sm" style={{ width: "324px", height: "204px" }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={`/id-back-${newStudent.variant}.jpg`} alt="Back" className="absolute inset-0 w-full h-full object-cover z-0" />
                 </div>
@@ -220,19 +198,12 @@ export default function EnrollStudentForm() {
             </div>
 
             {/* Modal Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center max-w-md">
-              <button 
-                onClick={handleExportBoth} disabled={isExporting}
-                className={`flex-1 py-3 px-6 text-white font-bold rounded-xl transition-all ${isExporting ? "bg-slate-400 cursor-wait" : "bg-blue-600 hover:bg-blue-500 shadow-lg shadow-blue-600/30 hover:-translate-y-1"}`}
-              >
-                {isExporting ? "Generating..." : "⬇️ Download ID Cards"}
-              </button>
-              
+            <div className="flex w-full justify-center max-w-md">
               <button 
                 onClick={closePrintRoom}
-                className="py-3 px-6 font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all hover:-translate-y-1"
+                className="w-full py-4 px-6 font-black text-white bg-slate-800 hover:bg-slate-900 rounded-xl transition-all shadow-lg hover:-translate-y-1"
               >
-                Close & Next Student
+                Done & Next Student
               </button>
             </div>
 
@@ -272,7 +243,7 @@ export default function EnrollStudentForm() {
           </div>
 
           <button type="submit" disabled={isSubmitting} className={`w-full p-3 text-white font-bold rounded-lg transition-all mt-2 ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md"}`}>
-            {isSubmitting ? "Generating ID..." : "Enroll Student"}
+            {isSubmitting ? "Enrolling..." : "Enroll Student"}
           </button>
         </form>
 
