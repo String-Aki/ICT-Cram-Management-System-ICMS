@@ -15,7 +15,7 @@ export default async function StudentsDirectory() {
   return (
     <main className="p-4 md:p-8 h-full flex flex-col">
       <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-1">Student Directory</h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-1">Student Enroll</h1>
         <p className="text-gray-500">Manage admissions, IDs, and profiles</p>
       </header>
 

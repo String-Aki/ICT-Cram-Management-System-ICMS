@@ -8,9 +8,10 @@ export default function Sidebar() {
 
   const navLinks = [
     { name: "Dashboard", href: "/", icon: "📊" },
+    { name: "Enroll", href: "/enroll", icon: "📋" },
     { name: "Attendance", href: "/attendance", icon: "✅" },
-    { name: "Students", href: "/students", icon: "🎓" },
     { name: "Schedule", href: "/schedule", icon: "📅" }, 
+    { name: "Students", href: "/students", icon: "🎓" },
     { name: "Leaderboard", href: "/leaderboard", icon: "🏆" },
     { name: "Achievements", href: "/achievements", icon: "⭐" },
   ];
