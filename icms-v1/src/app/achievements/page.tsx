@@ -140,7 +140,9 @@ export default function HallOfFame() {
       supabase
         .from("students")
         .select("id, full_name, grade_batch, total_xp")
-        .order("full_name"),
+        .eq("is_active", true)
+        .order("total_xp", { ascending: false })
+        .order("full_name", { ascending: true }),
       supabase.from("student_achievements").select("*"),
     ]);
 

@@ -17,7 +17,6 @@ const getRankDetails = (xp: number) => {
   const currentRank = RANKS.find(r => xp >= r.min && xp <= r.max) || RANKS[0];
   const nextRank = RANKS[RANKS.indexOf(currentRank) + 1] || currentRank;
   
-  // Calculate progress percentage to the next rank
   let progress = 100;
   let xpNeeded = 0;
   if (currentRank !== nextRank) {
@@ -44,7 +43,9 @@ export default function GamificationHub() {
     const { data, error } = await supabase
       .from("students")
       .select("id, full_name, grade_batch, total_xp")
-      .order("total_xp", { ascending: false });
+      .eq("is_active", true)
+      .order("total_xp", { ascending: false })
+      .order("full_name", { ascending: true });
 
     if (error) {
       console.error("Error fetching leaderboard:", error);
@@ -54,7 +55,6 @@ export default function GamificationHub() {
     setIsLoading(false);
   };
 
-  // Filter students based on search
   const filteredStudents = students.filter(s => 
     s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     s.grade_batch.toLowerCase().includes(searchQuery.toLowerCase())
@@ -87,7 +87,7 @@ export default function GamificationHub() {
           {/* 2nd Place */}
           <div className="bg-white rounded-t-3xl border border-slate-200 shadow-sm p-4 text-center transform translate-y-4 flex flex-col items-center">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner border-4 border-slate-200">🥈</div>
-            <p className="font-bold text-slate-800 line-clamp-1">{filteredStudents[1].full_name}</p>
+            <p className="font-bold text-slate-800 line-clamp-1">{SNT(filteredStudents[1].full_name)}</p>
             <p className="text-sm font-black text-blue-600 mt-1">{filteredStudents[1].total_xp} XP</p>
             <div className="w-full h-32 bg-slate-200 rounded-t-xl mt-4 opacity-50"></div>
           </div>
@@ -95,14 +95,14 @@ export default function GamificationHub() {
           <div className="bg-linear-to-b from-amber-100 to-white rounded-t-3xl border border-amber-200 shadow-lg p-6 text-center z-10 flex flex-col items-center relative">
             <div className="absolute -top-6 text-4xl animate-bounce">👑</div>
             <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center text-4xl mb-3 shadow-inner border-4 border-amber-300">🥇</div>
-            <p className="font-black text-lg text-slate-800 line-clamp-1">{filteredStudents[0].full_name}</p>
+            <p className="font-black text-lg text-slate-800 line-clamp-1">{SNT(filteredStudents[0].full_name)}</p>
             <p className="text-lg font-black text-orange-600 mt-1">{filteredStudents[0].total_xp} XP</p>
             <div className="w-full h-40 bg-amber-300 rounded-t-xl mt-4 opacity-70"></div>
           </div>
           {/* 3rd Place */}
           <div className="bg-white rounded-t-3xl border border-slate-200 shadow-sm p-4 text-center transform translate-y-8 flex flex-col items-center">
             <div className="w-16 h-16 bg-orange-50 rounded-full flex items-center justify-center text-2xl mb-3 shadow-inner border-4 border-orange-200">🥉</div>
-            <p className="font-bold text-slate-800 line-clamp-1">{filteredStudents[2].full_name}</p>
+            <p className="font-bold text-slate-800 line-clamp-1">{SNT(filteredStudents[2].full_name)}</p>
             <p className="text-sm font-black text-blue-600 mt-1">{filteredStudents[2].total_xp} XP</p>
             <div className="w-full h-24 bg-orange-200 rounded-t-xl mt-4 opacity-50"></div>
           </div>
