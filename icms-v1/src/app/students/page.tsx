@@ -23,6 +23,10 @@ export default function StudentsHub() {
   const [promotedStudent, setPromotedStudent] = useState<any | null>(null);
   const [previewQrUrl, setPreviewQrUrl] = useState("");
 
+  const [xpModal, setXpModal] = useState<any | null>(null);
+  const [xpAmount, setXpAmount] = useState<number>(50);
+  const [isAwardingXp, setIsAwardingXp] = useState(false);
+
   useEffect(() => {
     fetchStudents();
   }, [statusFilter]);
@@ -112,6 +116,32 @@ export default function StudentsHub() {
     }
   };
 
+  const handleAwardXp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAwardingXp(true);
+
+    try {
+      const newTotalXp = xpModal.total_xp + xpAmount;
+      
+      const { error } = await supabase
+        .from("students")
+        .update({ total_xp: newTotalXp })
+        .eq("id", xpModal.id);
+
+      if (error) throw error;
+
+      setStudents(prev => prev.map(s => s.id === xpModal.id ? { ...s, total_xp: newTotalXp } : s));
+      setXpModal(null);
+      setXpAmount(10);
+
+    } catch (err) {
+      console.error("Failed to award XP:", err);
+      alert("Failed to update XP.");
+    } finally {
+      setIsAwardingXp(false);
+    }
+  };
+
   const filteredStudents = students.filter(s => 
     s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     s.qr_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -121,6 +151,55 @@ export default function StudentsHub() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
       
+      {/* MODAL: MANUAL XP AWARD                    */}
+      {xpModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">Award XP</h2>
+                <p className="text-sm font-bold text-slate-500 mt-1">{SNT(xpModal.full_name)}</p>
+              </div>
+              <div className="text-4xl animate-bounce">🎁</div>
+            </div>
+
+            <form onSubmit={handleAwardXp} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 text-center">Amount of XP to Award</label>
+                <div className="flex items-center justify-center gap-4 bg-amber-50 p-6 rounded-2xl border border-amber-100">
+                  <button type="button" onClick={() => setXpAmount(Math.max(0, xpAmount - 10))} className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors">-</button>
+                  <input 
+                    type="number" 
+                    required 
+                    value={xpAmount}
+                    onChange={(e) => setXpAmount(Number(e.target.value))}
+                    className="w-24 bg-transparent outline-none text-center text-4xl font-black text-amber-600 font-mono"
+                  />
+                  <button type="button" onClick={() => setXpAmount(xpAmount + 10)} className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors">+</button>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setXpModal(null)}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isAwardingXp || xpAmount === 0}
+                  className="flex-1 py-3 px-4 bg-amber-500 text-white font-black rounded-xl hover:bg-amber-400 shadow-lg shadow-amber-500/30 transition-all disabled:opacity-50"
+                >
+                  {isAwardingXp ? "Sending..." : "Grant XP"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* MODAL 1: THE INPUT FORM */}
       {promotionModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -330,7 +409,6 @@ export default function StudentsHub() {
                         {student.grade_batch}
                       </td>
 
-                      {/* --- CLASS CYCLE PROGRESS BAR --- */}
                       <td className="p-4">
                         {student.cycle_classes >= 8 ? (
                           <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg flex items-center justify-between w-32 shadow-sm">
@@ -361,6 +439,17 @@ export default function StudentsHub() {
                         <div className="flex items-center justify-end gap-2 flex-wrap">
                           {student.is_active && (
                             <>
+                              <button 
+                                onClick={() => {
+                                  setXpModal(student);
+                                  setXpAmount(50);
+                                }}
+                                className="px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
+                                title="Award Custom XP"
+                              >
+                                🎁 Award XP
+                              </button>
+
                               <button 
                                 onClick={() => {
                                   setPromotionModal(student);
