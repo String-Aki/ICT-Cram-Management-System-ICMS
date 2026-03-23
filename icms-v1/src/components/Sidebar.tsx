@@ -12,6 +12,7 @@ export default function Sidebar() {
     { name: "Attendance", href: "/attendance", icon: "✅" },
     { name: "Schedule", href: "/schedule", icon: "📅" }, 
     { name: "Students", href: "/students", icon: "🎓" },
+    { name: "Payments", href: "/payments", icon: "💳" },
     { name: "Leaderboard", href: "/leaderboard", icon: "🏆" },
     { name: "Achievements", href: "/achievements", icon: "⭐" },
     { name: "Printouts", href: "/print-hub", icon: "🖨️" },
