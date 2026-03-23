@@ -28,6 +28,7 @@ export default function Sidebar() {
             src="/icon.png"
             alt="ICMS Logo"
             fill
+            sizes="48px"
             className="object-cover"
             priority
           />
