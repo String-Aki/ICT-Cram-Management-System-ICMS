@@ -173,7 +173,7 @@ export default function StudentsHub() {
         </div>
       )}
 
-      {/* MODAL 2: THE GACHA REVEAL (SUCCESS) */}
+      {/* MODAL 2: THE GACHA REVEAL */}
       {promotedStudent && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-300">
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-5xl w-full border border-slate-200 my-4 animate-in zoom-in-95 duration-500">
@@ -299,6 +299,7 @@ export default function StudentsHub() {
                     <th className="p-4 font-bold">Student Details</th>
                     <th className="p-4 font-bold">Short ID</th>
                     <th className="p-4 font-bold">Grade</th>
+                    <th className="p-4 font-bold">Class Cycle</th>
                     <th className="p-4 font-bold">Total XP</th>
                     <th className="p-4 font-bold text-right">Actions</th>
                   </tr>
@@ -329,40 +330,65 @@ export default function StudentsHub() {
                         {student.grade_batch}
                       </td>
 
+                      {/* --- CLASS CYCLE PROGRESS BAR --- */}
+                      <td className="p-4">
+                        {student.cycle_classes >= 8 ? (
+                          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg flex items-center justify-between w-32 shadow-sm">
+                            <span className="text-xs font-black tracking-wider uppercase">Fee Due</span>
+                            <span className="font-mono font-bold text-sm text-red-500">8/8</span>
+                          </div>
+                        ) : (
+                          <div className="w-32">
+                            <div className="flex justify-between text-xs font-bold mb-1.5">
+                              <span className="text-slate-500">Cycle</span>
+                              <span className="text-slate-700">{student.cycle_classes || 0}/8</span>
+                            </div>
+                            <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
+                              <div 
+                                className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                style={{ width: `${((student.cycle_classes || 0) / 8) * 100}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+
                       <td className="p-4 font-black text-amber-500">
                         {student.total_xp} <span className="text-xs text-amber-300">XP</span>
                       </td>
 
-                      <td className="p-4 text-right space-x-2">
-                        {student.is_active && (
-                          <>
-                            <button 
-                              onClick={() => {
-                                setPromotionModal(student);
-                                setNewGrade(student.grade_batch);
-                              }}
-                              className="px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1"
-                              title="Update Grade & Re-roll Card"
-                            >
-                              🎲 Promote
-                            </button>
+                      <td className="p-4">
+                        <div className="flex items-center justify-end gap-2 flex-wrap">
+                          {student.is_active && (
+                            <>
+                              <button 
+                                onClick={() => {
+                                  setPromotionModal(student);
+                                  setNewGrade(student.grade_batch);
+                                }}
+                                className="px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
+                                title="Update Grade & Re-roll Card"
+                              >
+                                🎲 Promote
+                              </button>
 
-                            <button 
-                              onClick={() => requestReprint(student.id, SNT(student.full_name))}
-                              className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1"
-                              title="Send to Print Hub"
-                            >
-                              🖨️ Reprint
-                            </button>
-                          </>
-                        )}
-                        
-                        <button 
-                          onClick={() => toggleStudentStatus(student.id, student.is_active, SNT(student.full_name))}
-                          className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors ${student.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
-                        >
-                          {student.is_active ? "Deactivate" : "Reactivate"}
-                        </button>
+                              <button 
+                                onClick={() => requestReprint(student.id, SNT(student.full_name))}
+                                className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
+                                title="Send to Print Hub"
+                              >
+                                🖨️ Reprint
+                              </button>
+                            </>
+                          )}
+                          
+                          <button 
+                            onClick={() => toggleStudentStatus(student.id, student.is_active, SNT(student.full_name))}
+                            className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors whitespace-nowrap ${student.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                          >
+                            {student.is_active ? "Deactivate" : "Reactivate"}
+                          </button>
+                        </div>
                       </td>
 
                     </tr>
