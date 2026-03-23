@@ -1,207 +1,394 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AttendanceScanner from "@/components/AttendanceScanner";
 import { supabase } from "@/lib/supabase";
+import SNT from "@/components/StudentNameTransformer";
 
-export default function AttendanceKiosk() {
-  const [lastScanned, setLastScanned] = useState<any | null>(null);
-  const [justAwardedXp, setJustAwardedXp] = useState(0);
-  const [isOfflineScan, setIsOfflineScan] = useState(false);
-  const [isDuplicateScan, setIsDuplicateScan] = useState(false);
-  
-  // The Automated Schedule State
-  const [classStartTime, setClassStartTime] = useState<string | null>(null);
-  const [classEndTime, setClassEndTime] = useState<string | null>(null);
-  const [scheduleType, setScheduleType] = useState<"loading" | "regular" | "override" | "none">("loading");
-  const [scheduleNote, setScheduleNote] = useState<string>("");
+export default function AttendanceHub() {
+  const [logs, setLogs] = useState<any[]>([]);
+  const [activeStudents, setActiveStudents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Analytics State
+  const [todayCount, setTodayCount] = useState(0);
+  const [totalActive, setTotalActive] = useState(0);
+  const [cohortStats, setCohortStats] = useState<Record<string, { present: number, total: number }>>({});
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"today" | "all">("today");
+
+  // Date Range State (Defaults to current month)
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setDate(1); // First day of current month
+    return d.toISOString().split('T')[0];
+  });
+  const [endDate, setEndDate] = useState(() => {
+    return new Date().toISOString().split('T')[0];
+  });
+
+  // Manual Check-In State
+  const [manualModal, setManualModal] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-    const fetchTodaySchedule = async () => {
-      const today = new Date();
-      // Format as YYYY-MM-DD
-      const year = today.getFullYear();
-      const month = String(today.getMonth() + 1).padStart(2, '0');
-      const day = String(today.getDate()).padStart(2, '0');
-      const localDateStr = `${year}-${month}-${day}`;
-      const dayOfWeek = today.getDay();
+    fetchData();
+  }, [viewMode, startDate, endDate]); // Refetch when mode or dates change
 
-      try {
-        // 1. Check for Emergency Overrides first
-        const { data: exception } = await supabase
-          .from("schedule_exceptions")
-          .select("*")
-          .eq("exception_date", localDateStr)
-          .single();
+  const fetchData = async () => {
+    setIsLoading(true);
 
-        if (exception) {
-          setClassStartTime(exception.new_start_time);
-          setClassEndTime(exception.new_end_time);
-          setScheduleType("override");
-          setScheduleNote(exception.note || "Emergency Override Active");
-          return;
+    // 1. Fetch active students to calculate totals and cohort stats
+    const { data: studentsData } = await supabase
+      .from("students")
+      .select("id, full_name, grade_batch, qr_code, total_xp, cycle_classes")
+      .eq("is_active", true)
+      .order("full_name", { ascending: true });
+
+    let studentsList = studentsData || [];
+    setActiveStudents(studentsList);
+    setTotalActive(studentsList.length);
+
+    // Setup base cohort totals
+    const stats: Record<string, { present: number, total: number }> = {};
+    studentsList.forEach(s => {
+      const grade = s.grade_batch || "Unknown";
+      if (!stats[grade]) stats[grade] = { present: 0, total: 0 };
+      stats[grade].total += 1;
+    });
+
+    // 2. Build the Attendance Query
+    let query = supabase
+      .from("attendance_logs")
+      .select(`
+        id, scanned_at, status, student_id,
+        student:student_id ( full_name, grade_batch, qr_code )
+      `)
+      .order("scanned_at", { ascending: false });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (viewMode === "today") {
+      // ONLY fetch today's logs
+      query = query.gte("scanned_at", today.toISOString());
+    } else {
+      // Fetch based on Date Range Picker
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      query = query.gte("scanned_at", start.toISOString()).lte("scanned_at", end.toISOString());
+    }
+
+    const { data: logsData, error } = await query;
+
+    if (logsData) {
+      setLogs(logsData);
+      
+      // Calculate Today's Stats (Even if viewing history, we want the top cards to remain accurate for "Today")
+      const todaysLogs = viewMode === "today" ? logsData : logsData.filter(log => new Date(log.scanned_at) >= today);
+      
+      // Get unique students who scanned today
+      const uniqueStudentIdsToday = new Set(todaysLogs.map(log => log.student_id));
+      setTodayCount(uniqueStudentIdsToday.size);
+
+      // Populate 'present' counts for cohorts
+      uniqueStudentIdsToday.forEach(id => {
+        const student = studentsList.find(s => s.id === id);
+        if (student && stats[student.grade_batch]) {
+          stats[student.grade_batch].present += 1;
         }
+      });
+      setCohortStats(stats);
+    }
 
-        // 2. Fall back to Regular Schedule
-        const { data: regular } = await supabase
-          .from("weekly_schedule")
-          .select("*")
-          .eq("day_of_week", dayOfWeek)
-          .eq("is_active", true)
-          .single();
-
-        if (regular) {
-          setClassStartTime(regular.start_time);
-          setClassEndTime(regular.end_time);
-          setScheduleType("regular");
-          setScheduleNote("Running on regular schedule");
-          return;
-        }
-
-        // 3. No class scheduled today
-        setClassStartTime(null);
-        setScheduleType("none");
-        setScheduleNote("No class today");
-
-      } catch (error) {
-        console.error("Error fetching schedule:", error);
-        setScheduleType("none");
-      }
-    };
-
-    fetchTodaySchedule();
-  }, []);
-
-  const handleSuccessfulScan = (studentData: any, xp: number, offline: boolean, duplicate: boolean) => {
-    setLastScanned(studentData);
-    setJustAwardedXp(xp);
-    setIsOfflineScan(offline);
-    setIsDuplicateScan(duplicate);
+    setIsLoading(false);
   };
 
+  const handleManualCheckIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentId) return;
+    setIsProcessing(true);
+
+    try {
+      const student = activeStudents.find(s => s.id === selectedStudentId);
+      if (!student) throw new Error("Student not found");
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const timestamp = new Date().toISOString();
+
+      const { data: existing } = await supabase
+        .from("attendance_logs")
+        .select("id")
+        .eq("student_id", student.id)
+        .gte("scanned_at", today.toISOString())
+        .single();
+
+      if (existing) {
+        alert("This student is already checked in for today!");
+        setIsProcessing(false);
+        return;
+      }
+
+      await supabase.from("attendance_logs").insert([{
+        student_id: student.id,
+        scanned_at: timestamp,
+        status: "manual"
+      }]);
+
+      await supabase.from("students").update({
+        total_xp: student.total_xp + 10,
+        cycle_classes: (student.cycle_classes || 0) + 1
+      }).eq("id", student.id);
+
+      setManualModal(false);
+      setSelectedStudentId("");
+      fetchData();
+
+    } catch (err) {
+      console.error("Manual check-in failed:", err);
+      alert("Failed to process check-in.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const filteredLogs = logs.filter(log => {
+    const studentName = log.student?.full_name?.toLowerCase() || "";
+    const studentId = log.student?.qr_code?.toLowerCase() || "";
+    const search = searchQuery.toLowerCase();
+    return studentName.includes(search) || studentId.includes(search);
+  });
+
   return (
-    <main className="min-h-screen bg-slate-100 p-4 md:p-6 lg:p-8 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
       
-      {/* --- KIOSK HEADER --- */}
-      <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-slate-200/60">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg">
-            IC
-          </div>
-          <div>
-            <h1 className="text-2xl font-black text-slate-800 tracking-tight">ICT Cram</h1>
-            <p className="text-slate-500 text-sm font-medium">Automated Attendance Check-In</p>
-          </div>
-        </div>
-        
-        {/* AUTOMATED SCHEDULE READOUT */}
-        <div className={`flex items-center gap-4 p-3 pr-5 rounded-2xl border w-full md:w-auto shadow-sm ${
-          scheduleType === 'override' ? 'bg-amber-50 border-amber-200' : 
-          scheduleType === 'regular' ? 'bg-blue-50 border-blue-200' : 
-          'bg-slate-50 border-slate-200'
-        }`}>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-            scheduleType === 'override' ? 'bg-amber-100 text-amber-600' : 
-            scheduleType === 'regular' ? 'bg-blue-100 text-blue-600' : 
-            'bg-slate-200 text-slate-500'
-          }`}>
-            {scheduleType === 'override' ? '⚠️' : scheduleType === 'regular' ? '⏱️' : '🗓️'}
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              {scheduleType === 'loading' ? 'Loading Schedule...' : scheduleNote}
-            </p>
-            {classStartTime ? (
-              <p className="text-lg font-black text-slate-800 font-mono tracking-tight">
-                {classStartTime} — {classEndTime || '??:??'}
-              </p>
-            ) : (
-              <p className="text-lg font-bold text-slate-400 tracking-tight">Scanner Offline</p>
-            )}
-          </div>
-        </div>
-      </header>
+      {/* --- MANUAL CHECK-IN MODAL --- */}
+      {manualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">Manual Check-In</h2>
+                <p className="text-sm font-bold text-slate-500 mt-1">For students who forgot their ID card.</p>
+              </div>
+              <div className="text-4xl">✍️</div>
+            </div>
 
-      {/* --- SPLIT SCREEN DASHBOARD --- */}
-      <div className="flex flex-col lg:flex-row gap-6 flex-1">
+            <form onSubmit={handleManualCheckIn} className="space-y-5">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Select Active Student</label>
+                <select 
+                  required
+                  value={selectedStudentId}
+                  onChange={(e) => setSelectedStudentId(e.target.value)}
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all font-bold text-slate-800"
+                >
+                  <option value="" disabled>-- Choose a student --</option>
+                  {activeStudents.map(s => (
+                    <option key={s.id} value={s.id}>{SNT(s.full_name)} (Grade {s.grade_batch})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm font-medium text-blue-800">
+                They will receive <strong className="font-black">+10 Base XP</strong> and their cycle counter will increment by 1.
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button type="button" onClick={() => setManualModal(false)} className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isProcessing || !selectedStudentId} className="flex-1 py-3 px-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50">
+                  {isProcessing ? "Processing..." : "Check In"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="max-w-7xl mx-auto space-y-8">
         
-        {/* LEFT: THE SCANNER HARDWARE */}
-        <section className="lg:w-5/12 xl:w-1/3 bg-white rounded-[2.5rem] shadow-sm border border-slate-200/60 p-8 flex flex-col items-center justify-center relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-64 bg-gradient-to-b from-slate-50 to-transparent -z-0"></div>
+        {/* HEADER */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-blue-100">
+              ✅
+            </div>
+            <div>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight">Attendance Ledger</h1>
+              <p className="text-slate-500 font-medium mt-1">Live Scanned feed, manual entries, and historical tracking.</p>
+            </div>
+          </div>
+          <div className="flex gap-3 w-full md:w-auto">
+            <button onClick={fetchData} className="px-5 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+              ↻ Sync Feed
+            </button>
+            <button onClick={() => setManualModal(true)} className="flex-1 md:flex-none px-6 py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all shadow-md">
+              + Manual Entry
+            </button>
+          </div>
+        </header>
+
+        {/* ANALYTICS ROW */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-5 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -z-0 opacity-50"></div>
+            <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-2xl border border-indigo-100 relative z-10 shrink-0">🏫</div>
+            <div className="relative z-10">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Present Today</p>
+              <p className="text-3xl font-black text-slate-800 font-mono mt-0.5">{todayCount} <span className="text-lg text-slate-400">/ {totalActive}</span></p>
+            </div>
+          </div>
           
-          <div className="relative z-10 w-full">
-            <AttendanceScanner classStartTime={classStartTime} onScanSuccess={handleSuccessfulScan} />
-          </div>
-        </section>
-
-        {/* RIGHT: THE LIVE FEED DISPLAY */}
-        <section className="lg:w-7/12 xl:w-2/3 flex flex-col">
-          <div className={`rounded-[2.5rem] shadow-sm border p-8 md:p-12 flex-1 flex flex-col relative overflow-hidden transition-all duration-500 ${isDuplicateScan ? 'bg-amber-50 border-amber-200' : lastScanned ? 'bg-white border-blue-100 shadow-[0_10px_40px_rgba(59,130,246,0.05)]' : 'bg-white border-slate-200/60'}`}>
-            
-            {lastScanned ? (
-              <div className="flex flex-col items-center justify-center flex-1 animate-in fade-in zoom-in-95 duration-500 relative z-10">
-                
-                {/* Profile Avatar */}
-                <div className={`w-40 h-40 rounded-full mb-8 shadow-2xl border-8 flex items-center justify-center text-7xl transform transition-transform hover:scale-105 ${isDuplicateScan ? 'bg-amber-100 border-amber-200 text-amber-500' : isOfflineScan ? 'bg-orange-100 border-orange-200 text-orange-500' : 'bg-slate-100 border-white text-slate-400'}`}>
-                  {isDuplicateScan ? '🛑' : isOfflineScan ? '📦' : '👤'}
-                </div>
-                
-                <h3 className="text-4xl md:text-5xl font-black text-slate-800 text-center mb-3 tracking-tight">
-                  {lastScanned.full_name}
-                </h3>
-                <p className="text-xl text-slate-500 font-bold tracking-widest uppercase mb-12">
-                  {lastScanned.grade_batch}
-                </p>
-
-                {/* Status Banners */}
-                {isDuplicateScan ? (
-                  <div className="bg-white border-2 border-amber-200 p-6 rounded-3xl w-full max-w-md text-center shadow-xl shadow-amber-500/10">
-                    <p className="text-xl font-black text-amber-600 uppercase tracking-widest mb-2">Access Logged</p>
-                    <p className="text-slate-600 font-medium">You have already been checked in for this session. Please take your seat.</p>
-                  </div>
+          {/*COHORT STATS CARD */}
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center relative overflow-hidden">
+             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0 opacity-50"></div>
+            <div className="relative z-10 w-full">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                <span>📊</span> Turnout by Grade (Today)
+              </p>
+              <div className="max-h-20 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
+                {Object.keys(cohortStats).length === 0 ? (
+                  <p className="text-sm font-medium text-slate-400">No active students.</p>
                 ) : (
-                  <div className={`p-1.5 rounded-[2rem] w-full max-w-md transform transition-all shadow-2xl ${isOfflineScan ? 'bg-slate-200' : 'bg-gradient-to-r from-amber-400 via-orange-500 to-amber-500 bg-[length:200%_auto] animate-[shimmer_3s_linear_infinite]'}`}>
-                    <div className="bg-white rounded-[1.8rem] p-6 flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">Total Rank XP</p>
-                        <p className={`text-5xl font-black tracking-tighter ${isOfflineScan ? 'text-slate-400' : 'text-orange-500'}`}>
-                          {lastScanned.total_xp} {isOfflineScan ? null : <span className="text-3xl ml-1">⭐</span>}
-                        </p>
-                      </div>
-                      <div className="text-right flex flex-col items-end justify-center">
-                        {isOfflineScan ? (
-                          <p className="text-sm font-bold text-orange-600 bg-orange-50 px-4 py-2 rounded-full border border-orange-100">
-                            Syncing Later
-                          </p>
-                        ) : (
-                          <>
-                            <p className="text-lg font-black text-green-600 bg-green-50 px-5 py-2 rounded-full border border-green-100 animate-[bounce_1s_ease-in-out_2]">
-                              +{justAwardedXp} XP
-                            </p>
-                            {justAwardedXp > 10 && (
-                              <p className="text-xs font-bold text-amber-500 mt-2 uppercase tracking-wider">Early Bonus!</p>
-                            )}
-                          </>
-                        )}
+                  Object.entries(cohortStats).sort(([a], [b]) => a.localeCompare(b)).map(([grade, stats]) => (
+                    <div key={grade} className="flex justify-between items-center text-sm">
+                      <span className="font-bold text-slate-700">Grade {grade}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-slate-600">{stats.present}/{stats.total}</span>
+                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full ${stats.present === stats.total ? 'bg-emerald-500' : stats.present > 0 ? 'bg-blue-500' : 'bg-slate-300'}`}
+                            style={{ width: `${(stats.present / Math.max(stats.total, 1)) * 100}%` }}
+                          ></div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ))
                 )}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center flex-1 relative z-10 text-center px-4">
-                <div className="w-32 h-32 bg-slate-50 rounded-full mb-8 flex items-center justify-center shadow-inner border-2 border-slate-100">
-                  <span className="text-5xl opacity-50">✍️</span>
-                </div>
-                <h2 className="text-3xl font-black text-slate-300 tracking-tight mb-4">Welcome to Class</h2>
-                <p className="text-slate-400 font-medium text-lg max-w-sm">
-                  Please hold your ICMS Student Card up to the camera on the left to check in.
-                </p>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-center gap-5">
+            <div className="text-center w-full">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">View Mode</p>
+              <div className="flex bg-slate-100 p-1 rounded-lg w-full">
+                <button onClick={() => setViewMode("today")} className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${viewMode === "today" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Live Feed</button>
+                <button onClick={() => setViewMode("all")} className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${viewMode === "all" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>History</button>
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* DATA TABLE */}
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50">
+            <div>
+              <h3 className="text-xl font-black text-slate-800">
+                {viewMode === "today" ? "Today's Live Roster" : "Historical Check-In Data"}
+              </h3>
+              <p className="text-sm font-medium text-slate-500 mt-1">
+                {viewMode === "today" ? "Students who have scanned in today." : "Filterable scan history."}
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              {viewMode === "all" && (
+                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
+                  <input 
+                    type="date" 
+                    value={startDate} 
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="text-sm font-bold text-slate-600 outline-none bg-transparent"
+                  />
+                  <span className="text-slate-300 font-bold">→</span>
+                  <input 
+                    type="date" 
+                    value={endDate} 
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="text-sm font-bold text-slate-600 outline-none bg-transparent"
+                  />
+                </div>
+              )}
+
+              <input 
+                type="text" 
+                placeholder="Search student or ID..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full sm:w-64 p-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 shadow-sm font-medium"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto min-h-[400px]">
+            {isLoading ? (
+               <div className="p-16 text-center animate-pulse text-slate-400 font-bold text-lg">Loading scan data...</div>
+            ) : filteredLogs.length === 0 ? (
+               <div className="p-16 text-center">
+                 <div className="text-5xl mb-4 opacity-50 grayscale">📭</div>
+                 <p className="text-slate-400 font-medium">No check-ins found for this view.</p>
+               </div>
+            ) : (
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-white text-slate-400 text-xs uppercase tracking-widest border-b border-slate-100">
+                    <th className="p-5 font-bold whitespace-nowrap">Date & Time</th>
+                    <th className="p-5 font-bold">Student</th>
+                    <th className="p-5 font-bold">Student ID</th>
+                    <th className="p-5 font-bold text-right">Method</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-sm">
+                  {filteredLogs.map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-5 whitespace-nowrap">
+                        <p className="font-bold text-slate-700">
+                          {new Date(log.scanned_at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        <p className="text-xs font-black text-blue-600 mt-0.5">
+                          {new Date(log.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}
+                        </p>
+                      </td>
+                      
+                      <td className="p-5">
+                        <p className="font-bold text-slate-800 text-base">{SNT(log.student?.full_name || "Unknown")}</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Grade {log.student?.grade_batch}</p>
+                      </td>
+
+                      <td className="p-5">
+                         <span className="bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg font-mono text-xs font-bold border border-slate-200">
+                           {log.student?.qr_code || "N/A"}
+                         </span>
+                      </td>
+                      
+                      <td className="p-5 text-right">
+                        {log.status === "manual" ? (
+                          <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold text-xs uppercase tracking-wider">
+                            <span>✍️</span> Manual
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg font-bold text-xs uppercase tracking-wider">
+                            <span>📱</span> Scanned
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
-        </section>
+        </div>
+
       </div>
-    </main>
+    </div>
   );
 }
