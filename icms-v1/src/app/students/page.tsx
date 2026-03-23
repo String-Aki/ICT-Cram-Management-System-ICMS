@@ -151,7 +151,7 @@ export default function StudentsHub() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
       
-      {/* MODAL: MANUAL XP AWARD                    */}
+      {/* MODAL: MANUAL XP AWARD */}
       {xpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-sm border border-slate-200 animate-in zoom-in-95 duration-200">
@@ -334,7 +334,7 @@ export default function StudentsHub() {
           <div>
             <div className="flex items-center gap-4 mb-2">
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-indigo-100">
-                👥
+                🎓
               </div>
               <h1 className="text-3xl font-black text-slate-800 tracking-tight">Students Hub</h1>
             </div>
@@ -442,7 +442,7 @@ export default function StudentsHub() {
                               <button 
                                 onClick={() => {
                                   setXpModal(student);
-                                  setXpAmount(50);
+                                  setXpAmount(10);
                                 }}
                                 className="px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
                                 title="Award Custom XP"

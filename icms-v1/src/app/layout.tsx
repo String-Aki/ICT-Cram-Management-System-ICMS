@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased bg-gray-50 flex flex-col md:flex-row min-h-screen">
+      <body className="antialiased bg-gray-50 flex flex-col md:flex-row min-h-screen custom-scrollbar">
         <Sidebar />
         <div className="flex-1 overflow-y-auto">
           {children}
