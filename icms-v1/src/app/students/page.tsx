@@ -3,25 +3,34 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import SNT from "@/components/StudentNameTransformer";
+import QRCode from "qrcode";
+import { League_Spartan, Prata } from "next/font/google";
+
+const leagueSpartan = League_Spartan({ subsets: ["latin"], weight: ["400", "700", "800"] });
+const prata = Prata({ subsets: ["latin"], weight: ["400"] });
 
 export default function StudentsHub() {
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"active" | "dropped" | "all">("active");
 
+  const [promotionModal, setPromotionModal] = useState<any | null>(null);
+  const [newGrade, setNewGrade] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const [promotedStudent, setPromotedStudent] = useState<any | null>(null);
+  const [previewQrUrl, setPreviewQrUrl] = useState("");
+
   useEffect(() => {
     fetchStudents();
-  }, [statusFilter]); // Re-fetch if they change the main tab
+  }, [statusFilter]);
 
   const fetchStudents = async () => {
     setIsLoading(true);
-    
     let query = supabase.from("students").select("*").order("full_name", { ascending: true });
     
-    // Apply the Soft Delete filter!
     if (statusFilter === "active") query = query.eq("is_active", true);
     if (statusFilter === "dropped") query = query.eq("is_active", false);
 
@@ -32,21 +41,17 @@ export default function StudentsHub() {
     setIsLoading(false);
   };
 
-  // --- ACTION: SOFT DELETE / REACTIVATE ---
   const toggleStudentStatus = async (id: string, currentStatus: boolean, name: string) => {
     const action = currentStatus ? "deactivate" : "reactivate";
     if (!confirm(`Are you sure you want to ${action} ${name}?`)) return;
 
-    // We just flip the boolean! The data stays perfectly safe.
     const { error } = await supabase.from("students").update({ is_active: !currentStatus }).eq("id", id);
     if (!error) fetchStudents();
   };
 
-  // --- ACTION: REPRINT LOST ID ---
   const requestReprint = async (studentId: string, name: string) => {
     if (!confirm(`Send ${name}'s ID card to the Print Hub?`)) return;
 
-    // Check if they are already in the queue so we don't spam it
     const { data: existing } = await supabase
       .from("card_print_queue")
       .select("id")
@@ -63,7 +68,50 @@ export default function StudentsHub() {
     if (!error) alert(`✅ Added to Print Hub Queue!`);
   };
 
-  // Client-side search filtering
+  const handlePromotion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    const rolledVariant = Math.floor(Math.random() * 6) + 1;
+
+    try {
+      const { error: updateError } = await supabase
+        .from("students")
+        .update({ grade_batch: newGrade, card_variant: rolledVariant })
+        .eq("id", promotionModal.id);
+
+      if (updateError) throw updateError;
+
+      const { data: existing } = await supabase
+        .from("card_print_queue")
+        .select("id")
+        .eq("student_id", promotionModal.id)
+        .eq("status", "pending")
+        .single();
+
+      if (!existing) {
+        await supabase.from("card_print_queue").insert([{ student_id: promotionModal.id }]);
+      }
+
+      const qrImage = await QRCode.toDataURL(promotionModal.qr_code, { margin: 0, width: 200 });
+      setPreviewQrUrl(qrImage);
+
+      setPromotedStudent({
+        ...promotionModal,
+        grade_batch: newGrade,
+        card_variant: rolledVariant
+      });
+      
+      setPromotionModal(null);
+      fetchStudents();
+
+    } catch (err) {
+      console.error("Promotion failed:", err);
+      alert("Failed to update student.");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const filteredStudents = students.filter(s => 
     s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
     s.qr_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -72,9 +120,137 @@ export default function StudentsHub() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
+      
+      {/* MODAL 1: THE INPUT FORM */}
+      {promotionModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">Yearly Promotion</h2>
+                <p className="text-sm font-bold text-slate-500 mt-1">{SNT(promotionModal.full_name)}</p>
+              </div>
+              <div className="text-4xl">🎲</div>
+            </div>
+
+            <form onSubmit={handlePromotion} className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">New Grade / Batch</label>
+                <input 
+                  type="text" 
+                  required 
+                  value={newGrade}
+                  onChange={(e) => setNewGrade(e.target.value)}
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 outline-none transition-all text-lg font-bold text-slate-800"
+                  placeholder="e.g. 11"
+                />
+              </div>
+
+              <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
+                <p className="text-sm text-purple-800 font-medium text-center">
+                  Saving will randomly generate a new card back variant and queue this student for printing.
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="button"
+                  onClick={() => setPromotionModal(null)}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={isUpdating || newGrade === promotionModal.grade_batch}
+                  className="flex-1 py-3 px-4 bg-purple-600 text-white font-black rounded-xl hover:bg-purple-500 shadow-lg shadow-purple-600/30 transition-all disabled:opacity-50"
+                >
+                  {isUpdating ? "Rolling..." : "Promote & Re-roll"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: THE GACHA REVEAL (SUCCESS) */}
+      {promotedStudent && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-5xl w-full border border-slate-200 my-4 animate-in zoom-in-95 duration-500">
+            
+            <div className="text-center mb-8">
+              <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-purple-100 mb-2 md:mb-4 animate-bounce">
+                <span className="text-2xl md:text-3xl">🎉</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-800">Promoted to Grade {promotedStudent.grade_batch}!</h2>
+              <p className="text-purple-600 font-bold mt-2 text-lg">New card back unlocked and queued for printing.</p>
+            </div>
+
+            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center mb-8 opacity-90 pointer-events-none">
+              
+              {/* --- FRONT CARD PREVIEW --- */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-slate-400 font-bold tracking-widest text-sm">FRONT UPDATED</span>
+                <div className="relative bg-white overflow-hidden shadow-2xl rounded-sm" style={{ width: "324px", height: "204px" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/id-front.jpg" alt="Front" className="absolute inset-0 w-full h-full object-cover z-0" />
+                  
+                  <div className="absolute z-10 top-[42px] left-[190px] w-[110px]">
+                    <p className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}>
+                      {SNT(promotedStudent.full_name)}
+                    </p>
+                  </div>
+
+                  <div className="absolute z-10 top-[80px] left-[190px]">
+                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
+                      {promotedStudent.grade_batch}
+                    </p>
+                  </div>
+
+                  <div className="absolute z-10 bottom-[35px] left-[95px]">
+                     <p className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}>
+                       {promotedStudent.qr_code}
+                     </p>
+                  </div>
+
+                  {previewQrUrl && (
+                    <div className="absolute z-10 top-[30px] left-[30px] w-[80px] h-[80px] bg-white p-1 rounded">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={previewQrUrl} alt="QR" className="w-full h-full object-contain" />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* --- BACK CARD PREVIEW --- */}
+              <div className="flex flex-col items-center gap-3">
+                <span className="text-purple-600 font-bold tracking-widest text-sm">NEW CARD BACK (Variant {promotedStudent.card_variant})</span>
+                <div className="relative bg-white overflow-hidden shadow-2xl rounded-sm transform transition-transform hover:scale-105" style={{ width: "324px", height: "204px" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={`/id-back-${promotedStudent.card_variant}.jpg`} alt="Back" className="absolute inset-0 w-full h-full object-cover z-0" />
+                </div>
+              </div>
+
+            </div>
+
+            <div className="flex w-full justify-center max-w-md">
+              <button 
+                onClick={() => {
+                  setPromotedStudent(null);
+                  setPreviewQrUrl("");
+                }}
+                className="w-full py-4 px-6 font-black text-white bg-slate-800 hover:bg-slate-900 rounded-xl transition-all shadow-lg hover:-translate-y-1"
+              >
+                Awesome! Close Window
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* THE MAIN DASHBOARD GRID */}
       <div className="max-w-7xl mx-auto">
-        
-        {/* HEADER & CONTROLS */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
           <div>
             <div className="flex items-center gap-4 mb-2">
@@ -92,34 +268,17 @@ export default function StudentsHub() {
               placeholder="Search names, IDs, or grades..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full md:w-72 p-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 shadow-sm"
+              className="w-full md:w-72 p-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 shadow-sm font-medium"
             />
           </div>
         </header>
 
-        {/* TAB NAVIGATION */}
         <div className="flex gap-2 mb-6 bg-slate-200/50 p-1.5 rounded-xl w-fit">
-          <button 
-            onClick={() => setStatusFilter("active")} 
-            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-          >
-            Active Students
-          </button>
-          <button 
-            onClick={() => setStatusFilter("dropped")} 
-            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "dropped" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-          >
-            Dropped Out
-          </button>
-          <button 
-            onClick={() => setStatusFilter("all")} 
-            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-          >
-            All Records
-          </button>
+          <button onClick={() => setStatusFilter("active")} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Active Students</button>
+          <button onClick={() => setStatusFilter("dropped")} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "dropped" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dropped Out</button>
+          <button onClick={() => setStatusFilter("all")} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>All Records</button>
         </div>
 
-        {/* THE DATA GRID */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           {isLoading ? (
              <div className="flex flex-col items-center justify-center h-64">
@@ -175,18 +334,29 @@ export default function StudentsHub() {
                       </td>
 
                       <td className="p-4 text-right space-x-2">
-                        {/* Reprint Button - Only show if active */}
                         {student.is_active && (
-                          <button 
-                            onClick={() => requestReprint(student.id, SNT(student.full_name))}
-                            className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 font-bold text-xs rounded-lg transition-colors"
-                            title="Send to Print Hub"
-                          >
-                            🖨️ Reprint ID
-                          </button>
+                          <>
+                            <button 
+                              onClick={() => {
+                                setPromotionModal(student);
+                                setNewGrade(student.grade_batch);
+                              }}
+                              className="px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1"
+                              title="Update Grade & Re-roll Card"
+                            >
+                              🎲 Promote
+                            </button>
+
+                            <button 
+                              onClick={() => requestReprint(student.id, SNT(student.full_name))}
+                              className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1"
+                              title="Send to Print Hub"
+                            >
+                              🖨️ Reprint
+                            </button>
+                          </>
                         )}
                         
-                        {/* Soft Delete / Reactivate Toggle */}
                         <button 
                           onClick={() => toggleStudentStatus(student.id, student.is_active, SNT(student.full_name))}
                           className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors ${student.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
@@ -202,7 +372,6 @@ export default function StudentsHub() {
             </div>
           )}
         </div>
-        
       </div>
     </div>
   );

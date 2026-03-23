@@ -14,6 +14,7 @@ export default function Sidebar() {
     { name: "Students", href: "/students", icon: "🎓" },
     { name: "Leaderboard", href: "/leaderboard", icon: "🏆" },
     { name: "Achievements", href: "/achievements", icon: "⭐" },
+    { name: "Printouts", href: "/print-hub", icon: "🖨️" },
   ];
 
   return (
