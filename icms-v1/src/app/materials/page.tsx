@@ -294,7 +294,6 @@ export default function MaterialsHub() {
                   Resource Link (Google Drive, PDF, etc)
                 </label>
                 <input
-                  required
                   type="url"
                   value={newUrl}
                   onChange={(e) => setNewUrl(e.target.value)}
