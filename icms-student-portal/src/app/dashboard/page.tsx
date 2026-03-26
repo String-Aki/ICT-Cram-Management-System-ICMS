@@ -13,6 +13,7 @@ import ArenaButton from "@/components/dashboard/ArenaButton";
 import VaultButton from "@/components/dashboard/VaultButton";
 import ExamVaultButton from "@/components/dashboard/ExamVaultButton";
 import PaymentsButton from "@/components/dashboard/PaymentsButton";
+import AchievementsButton from "@/components/dashboard/AchievementsButton";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -96,23 +97,16 @@ export default function StudentDashboard() {
           qrCode={student.qr_code} 
         />
 
-        {/* Changed to md:grid-cols-2 or md:grid-cols-3 depending on your preference, keeping 2 is clean! */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <QuestHub activeQuests={activeQuests} />
           <ClassCycle studentId={student.id} cycleClasses={student.cycle_classes} />
           
           <VaultButton />
           <ExamVaultButton />
-          
-          {/* NEW: Payments Button */}
           <PaymentsButton />
-
-          {/* Placeholder for the upcoming XP Ledger or Notifications */}
-          <div className="bg-slate-50 border border-dashed border-slate-300 rounded-[2rem] p-6 flex flex-col items-center justify-center text-center opacity-70">
-            <span className="text-2xl mb-2 grayscale">🎁</span>
-            <h2 className="font-bold text-slate-500">XP History</h2>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Under Construction</p>
-          </div>
+          
+          {/* REPLACED THE PLACEHOLDER WITH THIS: */}
+          <AchievementsButton />
 
           <div className="md:col-span-2 mt-2">
             <ArenaButton />
