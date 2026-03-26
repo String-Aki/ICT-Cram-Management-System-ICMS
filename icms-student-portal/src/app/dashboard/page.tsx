@@ -14,6 +14,7 @@ import VaultButton from "@/components/dashboard/VaultButton";
 import ExamVaultButton from "@/components/dashboard/ExamVaultButton";
 import PaymentsButton from "@/components/dashboard/PaymentsButton";
 import AchievementsButton from "@/components/dashboard/AchievementsButton";
+import XpLedgerButton from "@/components/dashboard/XpLedgerButton";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -104,9 +105,10 @@ export default function StudentDashboard() {
           <VaultButton />
           <ExamVaultButton />
           <PaymentsButton />
-          
-          {/* REPLACED THE PLACEHOLDER WITH THIS: */}
           <AchievementsButton />
+          
+          {/* REPLACED THE FINAL PLACEHOLDER: */}
+          <XpLedgerButton />
 
           <div className="md:col-span-2 mt-2">
             <ArenaButton />
