@@ -40,15 +40,18 @@ export default function MaterialsHub() {
       const uniqueGrades = Array.from(
         new Set(gradesData.map((g) => g.grade_batch)),
       ).sort();
-      setAvailableGrades(uniqueGrades);
+      // Remove "All" from the dynamic filter list if it accidentally got saved as a student's grade
+      setAvailableGrades(uniqueGrades.filter(g => g !== "All"));
     }
 
     let query = supabase
       .from("class_materials")
       .select("*")
       .order("created_at", { ascending: false });
+      
     if (selectedGrade !== "All") {
-      query = query.eq("grade_batch", selectedGrade);
+      // THE FIX: Fetch materials for the selected grade OR materials marked for "All"
+      query = query.in("grade_batch", [selectedGrade, "All"]);
     }
 
     const { data, error } = await query;
@@ -157,38 +160,29 @@ export default function MaterialsHub() {
     try {
       setSubmissions((prev) => new Set(prev).add(studentId));
       setRoster((prev) =>
-        prev.map((s) =>
-          s.id === studentId
-            ? { ...s, total_xp: s.total_xp + gradingMaterial.xp_reward }
-            : s,
-        ),
+        prev.map((s) => s.id === studentId ? { ...s, total_xp: s.total_xp + gradingMaterial.xp_reward } : s)
       );
 
-      const { error: subError } = await supabase
-        .from("homework_submissions")
-        .insert([{ material_id: gradingMaterial.id, student_id: studentId }]);
+      const { error: subError } = await supabase.from("homework_submissions").insert([
+        { material_id: gradingMaterial.id, student_id: studentId },
+      ]);
       if (subError) throw subError;
 
+      // Write XP Receipt
       if (gradingMaterial.xp_reward > 0) {
-        const { error: txError } = await supabase
-          .from("xp_transactions")
-          .insert([
-            {
-              student_id: studentId,
-              amount: gradingMaterial.xp_reward,
-              reason: `Quest Completed: ${gradingMaterial.title}`,
-            },
-          ]);
-        if (txError) throw txError;
+         const { error: txError } = await supabase.from("xp_transactions").insert([{
+           student_id: studentId,
+           amount: gradingMaterial.xp_reward,
+           reason: `Quest Completed: ${gradingMaterial.title}`
+         }]);
+         if (txError) throw txError;
       }
 
-      const { error: xpError } = await supabase
-        .from("students")
-        .update({
-          total_xp: currentTotalXp + gradingMaterial.xp_reward,
-        })
-        .eq("id", studentId);
+      const { error: xpError } = await supabase.from("students").update({
+        total_xp: currentTotalXp + gradingMaterial.xp_reward,
+      }).eq("id", studentId);
       if (xpError) throw xpError;
+
     } catch (err) {
       console.error("Failed to award XP:", err);
       const newSet = new Set(submissions);
@@ -253,15 +247,27 @@ export default function MaterialsHub() {
 
               <div className="flex gap-4">
                 <div className="flex-1">
-                  <label className="block text-sm font-bold text-slate-700 mb-1">
-                    Target Grade
-                  </label>
+                  <div className="flex justify-between items-end mb-1">
+                    <label className="block text-sm font-bold text-slate-700">
+                      Target Grade
+                    </label>
+                    {/* THE FIX: 1-Click All Grades button */}
+                    {newType === "material" && (
+                      <button 
+                        type="button" 
+                        onClick={() => setNewGrade("All")}
+                        className="text-[10px] bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-0.5 rounded uppercase tracking-widest font-bold transition-colors"
+                      >
+                        Apply to All
+                      </button>
+                    )}
+                  </div>
                   <input
                     required
                     type="text"
                     value={newGrade}
                     onChange={(e) => setNewGrade(e.target.value)}
-                    placeholder="e.g. 10"
+                    placeholder={newType === "material" ? "e.g. 10 or 'All'" : "e.g. 10"}
                     className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-bold"
                   />
                 </div>
@@ -281,7 +287,6 @@ export default function MaterialsHub() {
                 )}
               </div>
 
-              {/* NEW: DEADLINE PICKER */}
               {newType === "homework" && (
                 <div>
                   <label className="block text-sm font-bold text-red-500 mb-1">
@@ -516,8 +521,9 @@ export default function MaterialsHub() {
                     className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all group flex justify-between items-center"
                   >
                     <div>
+                      {/* THE FIX: Formatting "All" beautifully */}
                       <span className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border border-slate-200 mb-2 inline-block">
-                        Grade {item.grade_batch}
+                        {item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                       </span>
                       <h3 className="font-bold text-slate-800 text-lg line-clamp-1">
                         {item.title}
@@ -570,7 +576,7 @@ export default function MaterialsHub() {
                           <span
                             className={`${item.is_active ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"} text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border`}
                           >
-                            Grade {item.grade_batch}
+                            {item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                           </span>
                           {item.is_active ? (
                             <span className="text-xs font-black text-amber-500">

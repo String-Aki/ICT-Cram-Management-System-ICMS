@@ -21,7 +21,6 @@ export default function StudyVaultPage() {
       }
 
       try {
-        // 1. Get the student's batch
         const { data: student, error: studentError } = await supabase
           .from("students")
           .select("grade_batch")
@@ -31,12 +30,11 @@ export default function StudyVaultPage() {
         if (studentError) throw studentError;
         setGradeBatch(student.grade_batch);
 
-        // 2. Fetch all materials that are NOT homework
         const { data: vaultItems, error: matError } = await supabase
           .from("class_materials")
           .select("*")
-          .eq("grade_batch", student.grade_batch)
-          .neq("type", "homework") // Exclude quests!
+          .in("grade_batch", [student.grade_batch, "All"])
+          .neq("type", "homework")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
@@ -62,7 +60,6 @@ export default function StudyVaultPage() {
     );
   }
 
-  // Helper to get an icon based on the material type
   const getIconForType = (type: string) => {
     switch (type.toLowerCase()) {
       case 'video': return '🎥';
