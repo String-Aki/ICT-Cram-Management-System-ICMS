@@ -87,6 +87,20 @@ export default function AttendanceScanner({
             });
           if (logError) throw logError;
 
+          const { error: txError } = await supabase
+            .from("xp_transactions")
+            .insert([
+              {
+                student_id: student.id,
+                amount: finalXpToAward,
+                reason:
+                  finalXpToAward > 10
+                    ? "Class Attendance + Early Bonus"
+                    : "Class Attendance",
+              },
+            ]);
+          if (txError) throw txError;
+
           const updatedXp = student.total_xp + finalXpToAward;
           const updatedCycle = (student.cycle_classes || 0) + 1;
 

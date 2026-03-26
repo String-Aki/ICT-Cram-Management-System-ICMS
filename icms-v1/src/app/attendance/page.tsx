@@ -12,7 +12,9 @@ export default function AttendanceHub() {
   // Analytics State
   const [todayCount, setTodayCount] = useState(0);
   const [totalActive, setTotalActive] = useState(0);
-  const [cohortStats, setCohortStats] = useState<Record<string, { present: number, total: number }>>({});
+  const [cohortStats, setCohortStats] = useState<
+    Record<string, { present: number; total: number }>
+  >({});
 
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -22,10 +24,10 @@ export default function AttendanceHub() {
   const [startDate, setStartDate] = useState(() => {
     const d = new Date();
     d.setDate(1); // First day of current month
-    return d.toISOString().split('T')[0];
+    return d.toISOString().split("T")[0];
   });
   const [endDate, setEndDate] = useState(() => {
-    return new Date().toISOString().split('T')[0];
+    return new Date().toISOString().split("T")[0];
   });
 
   // Manual Check-In State
@@ -52,8 +54,8 @@ export default function AttendanceHub() {
     setTotalActive(studentsList.length);
 
     // Setup base cohort totals
-    const stats: Record<string, { present: number, total: number }> = {};
-    studentsList.forEach(s => {
+    const stats: Record<string, { present: number; total: number }> = {};
+    studentsList.forEach((s) => {
       const grade = s.grade_batch || "Unknown";
       if (!stats[grade]) stats[grade] = { present: 0, total: 0 };
       stats[grade].total += 1;
@@ -62,10 +64,12 @@ export default function AttendanceHub() {
     // 2. Build the Attendance Query
     let query = supabase
       .from("attendance_logs")
-      .select(`
+      .select(
+        `
         id, scanned_at, status, student_id,
         student:student_id ( full_name, grade_batch, qr_code )
-      `)
+      `,
+      )
       .order("scanned_at", { ascending: false });
 
     const today = new Date();
@@ -80,24 +84,31 @@ export default function AttendanceHub() {
       start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      query = query.gte("scanned_at", start.toISOString()).lte("scanned_at", end.toISOString());
+      query = query
+        .gte("scanned_at", start.toISOString())
+        .lte("scanned_at", end.toISOString());
     }
 
     const { data: logsData, error } = await query;
 
     if (logsData) {
       setLogs(logsData);
-      
+
       // Calculate Today's Stats (Even if viewing history, we want the top cards to remain accurate for "Today")
-      const todaysLogs = viewMode === "today" ? logsData : logsData.filter(log => new Date(log.scanned_at) >= today);
-      
+      const todaysLogs =
+        viewMode === "today"
+          ? logsData
+          : logsData.filter((log) => new Date(log.scanned_at) >= today);
+
       // Get unique students who scanned today
-      const uniqueStudentIdsToday = new Set(todaysLogs.map(log => log.student_id));
+      const uniqueStudentIdsToday = new Set(
+        todaysLogs.map((log) => log.student_id),
+      );
       setTodayCount(uniqueStudentIdsToday.size);
 
       // Populate 'present' counts for cohorts
-      uniqueStudentIdsToday.forEach(id => {
-        const student = studentsList.find(s => s.id === id);
+      uniqueStudentIdsToday.forEach((id) => {
+        const student = studentsList.find((s) => s.id === id);
         if (student && stats[student.grade_batch]) {
           stats[student.grade_batch].present += 1;
         }
@@ -114,7 +125,7 @@ export default function AttendanceHub() {
     setIsProcessing(true);
 
     try {
-      const student = activeStudents.find(s => s.id === selectedStudentId);
+      const student = activeStudents.find((s) => s.id === selectedStudentId);
       if (!student) throw new Error("Student not found");
 
       const today = new Date();
@@ -134,21 +145,33 @@ export default function AttendanceHub() {
         return;
       }
 
-      await supabase.from("attendance_logs").insert([{
-        student_id: student.id,
-        scanned_at: timestamp,
-        status: "manual"
-      }]);
+      await supabase.from("attendance_logs").insert([
+        {
+          student_id: student.id,
+          scanned_at: timestamp,
+          status: "manual",
+        },
+      ]);
 
-      await supabase.from("students").update({
-        total_xp: student.total_xp + 10,
-        cycle_classes: (student.cycle_classes || 0) + 1
-      }).eq("id", student.id);
+      await supabase.from("xp_transactions").insert([
+        {
+          student_id: student.id,
+          amount: 10,
+          reason: "Manual Class Check-In",
+        },
+      ]);
+
+      await supabase
+        .from("students")
+        .update({
+          total_xp: student.total_xp + 10,
+          cycle_classes: (student.cycle_classes || 0) + 1,
+        })
+        .eq("id", student.id);
 
       setManualModal(false);
       setSelectedStudentId("");
       fetchData();
-
     } catch (err) {
       console.error("Manual check-in failed:", err);
       alert("Failed to process check-in.");
@@ -157,7 +180,7 @@ export default function AttendanceHub() {
     }
   };
 
-  const filteredLogs = logs.filter(log => {
+  const filteredLogs = logs.filter((log) => {
     const studentName = log.student?.full_name?.toLowerCase() || "";
     const studentId = log.student?.qr_code?.toLowerCase() || "";
     const search = searchQuery.toLowerCase();
@@ -166,44 +189,63 @@ export default function AttendanceHub() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
-      
       {/* --- MANUAL CHECK-IN MODAL --- */}
       {manualModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-200 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-2xl font-black text-slate-800">Manual Check-In</h2>
-                <p className="text-sm font-bold text-slate-500 mt-1">For students who forgot their ID card.</p>
+                <h2 className="text-2xl font-black text-slate-800">
+                  Manual Check-In
+                </h2>
+                <p className="text-sm font-bold text-slate-500 mt-1">
+                  For students who forgot their ID card.
+                </p>
               </div>
               <div className="text-4xl">✍️</div>
             </div>
 
             <form onSubmit={handleManualCheckIn} className="space-y-5">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">Select Active Student</label>
-                <select 
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Select Active Student
+                </label>
+                <select
                   required
                   value={selectedStudentId}
                   onChange={(e) => setSelectedStudentId(e.target.value)}
                   className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all font-bold text-slate-800"
                 >
-                  <option value="" disabled>-- Choose a student --</option>
-                  {activeStudents.map(s => (
-                    <option key={s.id} value={s.id}>{SNT(s.full_name)} (Grade {s.grade_batch})</option>
+                  <option value="" disabled>
+                    -- Choose a student --
+                  </option>
+                  {activeStudents.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {SNT(s.full_name)} (Grade {s.grade_batch})
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm font-medium text-blue-800">
-                They will receive <strong className="font-black">+10 Base XP</strong> and their cycle counter will increment by 1.
+                They will receive{" "}
+                <strong className="font-black">+10 Base XP</strong> and their
+                cycle counter will increment by 1.
               </div>
 
               <div className="flex gap-3 pt-4">
-                <button type="button" onClick={() => setManualModal(false)} className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => setManualModal(false)}
+                  className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                >
                   Cancel
                 </button>
-                <button type="submit" disabled={isProcessing || !selectedStudentId} className="flex-1 py-3 px-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50">
+                <button
+                  type="submit"
+                  disabled={isProcessing || !selectedStudentId}
+                  className="flex-1 py-3 px-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50"
+                >
                   {isProcessing ? "Processing..." : "Check In"}
                 </button>
               </div>
@@ -213,7 +255,6 @@ export default function AttendanceHub() {
       )}
 
       <div className="max-w-7xl mx-auto space-y-8">
-        
         {/* HEADER */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
           <div className="flex items-center gap-5">
@@ -221,15 +262,25 @@ export default function AttendanceHub() {
               ✅
             </div>
             <div>
-              <h1 className="text-3xl font-black text-slate-800 tracking-tight">Attendance Ledger</h1>
-              <p className="text-slate-500 font-medium mt-1">Live Scanned feed, manual entries, and historical tracking.</p>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+                Attendance Ledger
+              </h1>
+              <p className="text-slate-500 font-medium mt-1">
+                Live Scanned feed, manual entries, and historical tracking.
+              </p>
             </div>
           </div>
           <div className="flex gap-3 w-full md:w-auto">
-            <button onClick={fetchData} className="px-5 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+            <button
+              onClick={fetchData}
+              className="px-5 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+            >
               ↻ Sync Feed
             </button>
-            <button onClick={() => setManualModal(true)} className="flex-1 md:flex-none px-6 py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all shadow-md">
+            <button
+              onClick={() => setManualModal(true)}
+              className="flex-1 md:flex-none px-6 py-3 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 transition-all shadow-md"
+            >
               + Manual Entry
             </button>
           </div>
@@ -239,38 +290,58 @@ export default function AttendanceHub() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -z-0 opacity-50"></div>
-            <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-2xl border border-indigo-100 relative z-10 shrink-0">🏫</div>
+            <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-2xl border border-indigo-100 relative z-10 shrink-0">
+              🏫
+            </div>
             <div className="relative z-10">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Present Today</p>
-              <p className="text-3xl font-black text-slate-800 font-mono mt-0.5">{todayCount} <span className="text-lg text-slate-400">/ {totalActive}</span></p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Present Today
+              </p>
+              <p className="text-3xl font-black text-slate-800 font-mono mt-0.5">
+                {todayCount}{" "}
+                <span className="text-lg text-slate-400">/ {totalActive}</span>
+              </p>
             </div>
           </div>
-          
+
           {/*COHORT STATS CARD */}
           <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0 opacity-50"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-bl-full -z-0 opacity-50"></div>
             <div className="relative z-10 w-full">
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
                 <span>📊</span> Turnout by Grade (Today)
               </p>
               <div className="max-h-20 overflow-y-auto pr-2 space-y-2 custom-scrollbar">
                 {Object.keys(cohortStats).length === 0 ? (
-                  <p className="text-sm font-medium text-slate-400">No active students.</p>
+                  <p className="text-sm font-medium text-slate-400">
+                    No active students.
+                  </p>
                 ) : (
-                  Object.entries(cohortStats).sort(([a], [b]) => a.localeCompare(b)).map(([grade, stats]) => (
-                    <div key={grade} className="flex justify-between items-center text-sm">
-                      <span className="font-bold text-slate-700">Grade {grade}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-600">{stats.present}/{stats.total}</span>
-                        <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${stats.present === stats.total ? 'bg-emerald-500' : stats.present > 0 ? 'bg-blue-500' : 'bg-slate-300'}`}
-                            style={{ width: `${(stats.present / Math.max(stats.total, 1)) * 100}%` }}
-                          ></div>
+                  Object.entries(cohortStats)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([grade, stats]) => (
+                      <div
+                        key={grade}
+                        className="flex justify-between items-center text-sm"
+                      >
+                        <span className="font-bold text-slate-700">
+                          Grade {grade}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-600">
+                            {stats.present}/{stats.total}
+                          </span>
+                          <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${stats.present === stats.total ? "bg-emerald-500" : stats.present > 0 ? "bg-blue-500" : "bg-slate-300"}`}
+                              style={{
+                                width: `${(stats.present / Math.max(stats.total, 1)) * 100}%`,
+                              }}
+                            ></div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))
                 )}
               </div>
             </div>
@@ -278,10 +349,22 @@ export default function AttendanceHub() {
 
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-center gap-5">
             <div className="text-center w-full">
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">View Mode</p>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">
+                View Mode
+              </p>
               <div className="flex bg-slate-100 p-1 rounded-lg w-full">
-                <button onClick={() => setViewMode("today")} className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${viewMode === "today" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Live Feed</button>
-                <button onClick={() => setViewMode("all")} className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${viewMode === "all" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>History</button>
+                <button
+                  onClick={() => setViewMode("today")}
+                  className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${viewMode === "today" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  Live Feed
+                </button>
+                <button
+                  onClick={() => setViewMode("all")}
+                  className={`flex-1 py-1.5 text-sm font-bold rounded-md transition-all ${viewMode === "all" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  History
+                </button>
               </div>
             </div>
           </div>
@@ -292,35 +375,39 @@ export default function AttendanceHub() {
           <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50">
             <div>
               <h3 className="text-xl font-black text-slate-800">
-                {viewMode === "today" ? "Today's Live Roster" : "Historical Check-In Data"}
+                {viewMode === "today"
+                  ? "Today's Live Roster"
+                  : "Historical Check-In Data"}
               </h3>
               <p className="text-sm font-medium text-slate-500 mt-1">
-                {viewMode === "today" ? "Students who have scanned in today." : "Filterable scan history."}
+                {viewMode === "today"
+                  ? "Students who have scanned in today."
+                  : "Filterable scan history."}
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               {viewMode === "all" && (
                 <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl px-3 py-1.5 shadow-sm">
-                  <input 
-                    type="date" 
-                    value={startDate} 
+                  <input
+                    type="date"
+                    value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                     className="text-sm font-bold text-slate-600 outline-none bg-transparent"
                   />
                   <span className="text-slate-300 font-bold">→</span>
-                  <input 
-                    type="date" 
-                    value={endDate} 
+                  <input
+                    type="date"
+                    value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                     className="text-sm font-bold text-slate-600 outline-none bg-transparent"
                   />
                 </div>
               )}
 
-              <input 
-                type="text" 
-                placeholder="Search student or ID..." 
+              <input
+                type="text"
+                placeholder="Search student or ID..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full sm:w-64 p-3 rounded-xl border border-slate-200 outline-none focus:border-blue-500 shadow-sm font-medium"
@@ -330,17 +417,23 @@ export default function AttendanceHub() {
 
           <div className="overflow-x-auto min-h-[400px]">
             {isLoading ? (
-               <div className="p-16 text-center animate-pulse text-slate-400 font-bold text-lg">Loading scan data...</div>
+              <div className="p-16 text-center animate-pulse text-slate-400 font-bold text-lg">
+                Loading scan data...
+              </div>
             ) : filteredLogs.length === 0 ? (
-               <div className="p-16 text-center">
-                 <div className="text-5xl mb-4 opacity-50 grayscale">📭</div>
-                 <p className="text-slate-400 font-medium">No check-ins found for this view.</p>
-               </div>
+              <div className="p-16 text-center">
+                <div className="text-5xl mb-4 opacity-50 grayscale">📭</div>
+                <p className="text-slate-400 font-medium">
+                  No check-ins found for this view.
+                </p>
+              </div>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-white text-slate-400 text-xs uppercase tracking-widest border-b border-slate-100">
-                    <th className="p-5 font-bold whitespace-nowrap">Date & Time</th>
+                    <th className="p-5 font-bold whitespace-nowrap">
+                      Date & Time
+                    </th>
                     <th className="p-5 font-bold">Student</th>
                     <th className="p-5 font-bold">Student ID</th>
                     <th className="p-5 font-bold text-right">Method</th>
@@ -348,27 +441,42 @@ export default function AttendanceHub() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
                   {filteredLogs.map((log) => (
-                    <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                    <tr
+                      key={log.id}
+                      className="hover:bg-slate-50 transition-colors"
+                    >
                       <td className="p-5 whitespace-nowrap">
                         <p className="font-bold text-slate-700">
-                          {new Date(log.scanned_at).toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                          {new Date(log.scanned_at).toLocaleDateString([], {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          })}
                         </p>
                         <p className="text-xs font-black text-blue-600 mt-0.5">
-                          {new Date(log.scanned_at).toLocaleTimeString([], { hour: '2-digit', minute:'2-digit' })}
+                          {new Date(log.scanned_at).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </p>
-                      </td>
-                      
-                      <td className="p-5">
-                        <p className="font-bold text-slate-800 text-base">{SNT(log.student?.full_name || "Unknown")}</p>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">Grade {log.student?.grade_batch}</p>
                       </td>
 
                       <td className="p-5">
-                         <span className="bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg font-mono text-xs font-bold border border-slate-200">
-                           {log.student?.qr_code || "N/A"}
-                         </span>
+                        <p className="font-bold text-slate-800 text-base">
+                          {SNT(log.student?.full_name || "Unknown")}
+                        </p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-0.5">
+                          Grade {log.student?.grade_batch}
+                        </p>
                       </td>
-                      
+
+                      <td className="p-5">
+                        <span className="bg-slate-100 text-slate-600 px-2.5 py-1.5 rounded-lg font-mono text-xs font-bold border border-slate-200">
+                          {log.student?.qr_code || "N/A"}
+                        </span>
+                      </td>
+
                       <td className="p-5 text-right">
                         {log.status === "manual" ? (
                           <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold text-xs uppercase tracking-wider">
@@ -387,7 +495,6 @@ export default function AttendanceHub() {
             )}
           </div>
         </div>
-
       </div>
     </div>
   );

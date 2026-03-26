@@ -185,6 +185,15 @@ export default function ExamsHub() {
         }]);
         if (resultError) throw resultError;
 
+        if (awardedXp > 0) {
+          const { error: txError } = await supabase.from("xp_transactions").insert([{
+            student_id: student.id,
+            amount: awardedXp,
+            reason: `Exam Score: ${gradingExam.title}`
+          }]);
+          if (txError) throw txError;
+        }
+
         const { error: xpError } = await supabase.from("students").update({
           total_xp: student.total_xp + awardedXp
         }).eq("id", student.id);

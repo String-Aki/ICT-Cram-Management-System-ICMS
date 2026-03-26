@@ -166,13 +166,21 @@ export default function MaterialsHub() {
 
       const { error: subError } = await supabase
         .from("homework_submissions")
-        .insert([
-          {
-            material_id: gradingMaterial.id,
-            student_id: studentId,
-          },
-        ]);
+        .insert([{ material_id: gradingMaterial.id, student_id: studentId }]);
       if (subError) throw subError;
+
+      if (gradingMaterial.xp_reward > 0) {
+        const { error: txError } = await supabase
+          .from("xp_transactions")
+          .insert([
+            {
+              student_id: studentId,
+              amount: gradingMaterial.xp_reward,
+              reason: `Quest Completed: ${gradingMaterial.title}`,
+            },
+          ]);
+        if (txError) throw txError;
+      }
 
       const { error: xpError } = await supabase
         .from("students")

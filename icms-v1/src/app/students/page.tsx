@@ -6,15 +6,20 @@ import SNT from "@/components/StudentNameTransformer";
 import QRCode from "qrcode";
 import { League_Spartan, Prata } from "next/font/google";
 
-const leagueSpartan = League_Spartan({ subsets: ["latin"], weight: ["400", "700", "800"] });
+const leagueSpartan = League_Spartan({
+  subsets: ["latin"],
+  weight: ["400", "700", "800"],
+});
 const prata = Prata({ subsets: ["latin"], weight: ["400"] });
 
 export default function StudentsHub() {
   const [students, setStudents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"active" | "dropped" | "all">("active");
+  const [statusFilter, setStatusFilter] = useState<
+    "active" | "dropped" | "all"
+  >("active");
 
   const [promotionModal, setPromotionModal] = useState<any | null>(null);
   const [newGrade, setNewGrade] = useState("");
@@ -33,23 +38,33 @@ export default function StudentsHub() {
 
   const fetchStudents = async () => {
     setIsLoading(true);
-    let query = supabase.from("students").select("*").order("full_name", { ascending: true });
-    
+    let query = supabase
+      .from("students")
+      .select("*")
+      .order("full_name", { ascending: true });
+
     if (statusFilter === "active") query = query.eq("is_active", true);
     if (statusFilter === "dropped") query = query.eq("is_active", false);
 
     const { data, error } = await query;
     if (error) console.error("Error fetching students:", error);
     if (data) setStudents(data);
-    
+
     setIsLoading(false);
   };
 
-  const toggleStudentStatus = async (id: string, currentStatus: boolean, name: string) => {
+  const toggleStudentStatus = async (
+    id: string,
+    currentStatus: boolean,
+    name: string,
+  ) => {
     const action = currentStatus ? "deactivate" : "reactivate";
     if (!confirm(`Are you sure you want to ${action} ${name}?`)) return;
 
-    const { error } = await supabase.from("students").update({ is_active: !currentStatus }).eq("id", id);
+    const { error } = await supabase
+      .from("students")
+      .update({ is_active: !currentStatus })
+      .eq("id", id);
     if (!error) fetchStudents();
   };
 
@@ -68,7 +83,9 @@ export default function StudentsHub() {
       return;
     }
 
-    const { error } = await supabase.from("card_print_queue").insert([{ student_id: studentId }]);
+    const { error } = await supabase
+      .from("card_print_queue")
+      .insert([{ student_id: studentId }]);
     if (!error) alert(`✅ Added to Print Hub Queue!`);
   };
 
@@ -93,21 +110,25 @@ export default function StudentsHub() {
         .single();
 
       if (!existing) {
-        await supabase.from("card_print_queue").insert([{ student_id: promotionModal.id }]);
+        await supabase
+          .from("card_print_queue")
+          .insert([{ student_id: promotionModal.id }]);
       }
 
-      const qrImage = await QRCode.toDataURL(promotionModal.qr_code, { margin: 0, width: 200 });
+      const qrImage = await QRCode.toDataURL(promotionModal.qr_code, {
+        margin: 0,
+        width: 200,
+      });
       setPreviewQrUrl(qrImage);
 
       setPromotedStudent({
         ...promotionModal,
         grade_batch: newGrade,
-        card_variant: rolledVariant
+        card_variant: rolledVariant,
       });
-      
+
       setPromotionModal(null);
       fetchStudents();
-
     } catch (err) {
       console.error("Promotion failed:", err);
       alert("Failed to update student.");
@@ -121,19 +142,34 @@ export default function StudentsHub() {
     setIsAwardingXp(true);
 
     try {
+      // 1. WRITE THE XP RECEIPT FIRST
+      const { error: txError } = await supabase.from("xp_transactions").insert([
+        {
+          student_id: xpModal.id,
+          amount: xpAmount,
+          reason: "Bonus XP (Admin Awarded)",
+        },
+      ]);
+
+      if (txError) throw txError;
+
+      // 2. Update the Student's Total XP
       const newTotalXp = xpModal.total_xp + xpAmount;
-      
-      const { error } = await supabase
+
+      const { error: updateError } = await supabase
         .from("students")
         .update({ total_xp: newTotalXp })
         .eq("id", xpModal.id);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      setStudents(prev => prev.map(s => s.id === xpModal.id ? { ...s, total_xp: newTotalXp } : s));
+      setStudents((prev) =>
+        prev.map((s) =>
+          s.id === xpModal.id ? { ...s, total_xp: newTotalXp } : s,
+        ),
+      );
       setXpModal(null);
       setXpAmount(10);
-
     } catch (err) {
       console.error("Failed to award XP:", err);
       alert("Failed to update XP.");
@@ -142,15 +178,15 @@ export default function StudentsHub() {
     }
   };
 
-  const filteredStudents = students.filter(s => 
-    s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.qr_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.grade_batch.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredStudents = students.filter(
+    (s) =>
+      s.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.qr_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.grade_batch.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
-      
       {/* MODAL: MANUAL XP AWARD */}
       {xpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -158,36 +194,52 @@ export default function StudentsHub() {
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h2 className="text-2xl font-black text-slate-800">Award XP</h2>
-                <p className="text-sm font-bold text-slate-500 mt-1">{SNT(xpModal.full_name)}</p>
+                <p className="text-sm font-bold text-slate-500 mt-1">
+                  {SNT(xpModal.full_name)}
+                </p>
               </div>
               <div className="text-4xl animate-bounce">🎁</div>
             </div>
 
             <form onSubmit={handleAwardXp} className="space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2 text-center">Amount of XP to Award</label>
+                <label className="block text-sm font-bold text-slate-700 mb-2 text-center">
+                  Amount of XP to Award
+                </label>
                 <div className="flex items-center justify-center gap-4 bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                  <button type="button" onClick={() => setXpAmount(Math.max(0, xpAmount - 10))} className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors">-</button>
-                  <input 
-                    type="number" 
-                    required 
+                  <button
+                    type="button"
+                    onClick={() => setXpAmount(Math.max(0, xpAmount - 10))}
+                    className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    required
                     value={xpAmount}
                     onChange={(e) => setXpAmount(Number(e.target.value))}
                     className="w-24 bg-transparent outline-none text-center text-4xl font-black text-amber-600 font-mono"
                   />
-                  <button type="button" onClick={() => setXpAmount(xpAmount + 10)} className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors">+</button>
+                  <button
+                    type="button"
+                    onClick={() => setXpAmount(xpAmount + 10)}
+                    className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setXpModal(null)}
                   className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={isAwardingXp || xpAmount === 0}
                   className="flex-1 py-3 px-4 bg-amber-500 text-white font-black rounded-xl hover:bg-amber-400 shadow-lg shadow-amber-500/30 transition-all disabled:opacity-50"
@@ -206,18 +258,24 @@ export default function StudentsHub() {
           <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-200 animate-in zoom-in-95 duration-200">
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h2 className="text-2xl font-black text-slate-800">Yearly Promotion</h2>
-                <p className="text-sm font-bold text-slate-500 mt-1">{SNT(promotionModal.full_name)}</p>
+                <h2 className="text-2xl font-black text-slate-800">
+                  Yearly Promotion
+                </h2>
+                <p className="text-sm font-bold text-slate-500 mt-1">
+                  {SNT(promotionModal.full_name)}
+                </p>
               </div>
               <div className="text-4xl">🎲</div>
             </div>
 
             <form onSubmit={handlePromotion} className="space-y-6">
               <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">New Grade / Batch</label>
-                <input 
-                  type="text" 
-                  required 
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  New Grade / Batch
+                </label>
+                <input
+                  type="text"
+                  required
                   value={newGrade}
                   onChange={(e) => setNewGrade(e.target.value)}
                   className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-purple-500 focus:ring-4 focus:ring-purple-500/20 outline-none transition-all text-lg font-bold text-slate-800"
@@ -227,21 +285,24 @@ export default function StudentsHub() {
 
               <div className="bg-purple-50 p-4 rounded-xl border border-purple-100">
                 <p className="text-sm text-purple-800 font-medium text-center">
-                  Saving will randomly generate a new card back variant and queue this student for printing.
+                  Saving will randomly generate a new card back variant and
+                  queue this student for printing.
                 </p>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button 
+                <button
                   type="button"
                   onClick={() => setPromotionModal(null)}
                   className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
-                  disabled={isUpdating || newGrade === promotionModal.grade_batch}
+                  disabled={
+                    isUpdating || newGrade === promotionModal.grade_batch
+                  }
                   className="flex-1 py-3 px-4 bg-purple-600 text-white font-black rounded-xl hover:bg-purple-500 shadow-lg shadow-purple-600/30 transition-all disabled:opacity-50"
                 >
                   {isUpdating ? "Rolling..." : "Promote & Re-roll"}
@@ -256,46 +317,67 @@ export default function StudentsHub() {
       {promotedStudent && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/95 backdrop-blur-md p-4 overflow-y-auto animate-in fade-in duration-300">
           <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-5xl w-full border border-slate-200 my-4 animate-in zoom-in-95 duration-500">
-            
             <div className="text-center mb-8">
               <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-purple-100 mb-2 md:mb-4 animate-bounce">
                 <span className="text-2xl md:text-3xl">🎉</span>
               </div>
-              <h2 className="text-3xl md:text-4xl font-black text-slate-800">Promoted to Grade {promotedStudent.grade_batch}!</h2>
-              <p className="text-purple-600 font-bold mt-2 text-lg">New card back unlocked and queued for printing.</p>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-800">
+                Promoted to Grade {promotedStudent.grade_batch}!
+              </h2>
+              <p className="text-purple-600 font-bold mt-2 text-lg">
+                New card back unlocked and queued for printing.
+              </p>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center mb-8 opacity-90 pointer-events-none">
-              
               {/* --- FRONT CARD PREVIEW --- */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-slate-400 font-bold tracking-widest text-sm">FRONT UPDATED</span>
-                <div className="relative bg-white overflow-hidden shadow-2xl rounded-sm" style={{ width: "324px", height: "204px" }}>
+                <span className="text-slate-400 font-bold tracking-widest text-sm">
+                  FRONT UPDATED
+                </span>
+                <div
+                  className="relative bg-white overflow-hidden shadow-2xl rounded-sm"
+                  style={{ width: "324px", height: "204px" }}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/id-front.jpg" alt="Front" className="absolute inset-0 w-full h-full object-cover z-0" />
-                  
+                  <img
+                    src="/id-front.jpg"
+                    alt="Front"
+                    className="absolute inset-0 w-full h-full object-cover z-0"
+                  />
+
                   <div className="absolute z-10 top-[42px] left-[190px] w-[110px]">
-                    <p className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}>
+                    <p
+                      className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}
+                    >
                       {SNT(promotedStudent.full_name)}
                     </p>
                   </div>
 
                   <div className="absolute z-10 top-[80px] left-[190px]">
-                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
+                    <p
+                      className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}
+                    >
                       {promotedStudent.grade_batch}
                     </p>
                   </div>
 
                   <div className="absolute z-10 bottom-[35px] left-[95px]">
-                     <p className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}>
-                       {promotedStudent.qr_code}
-                     </p>
+                    <p
+                      className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}
+                    >
+                      {promotedStudent.qr_code}
+                    </p>
                   </div>
 
                   {previewQrUrl && (
                     <div className="absolute z-10 top-[30px] left-[30px] w-[80px] h-[80px] bg-white p-1 rounded">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={previewQrUrl} alt="QR" className="w-full h-full object-contain" />
+                      <img
+                        src={previewQrUrl}
+                        alt="QR"
+                        className="w-full h-full object-contain"
+                      />
                     </div>
                   )}
                 </div>
@@ -303,17 +385,25 @@ export default function StudentsHub() {
 
               {/* --- BACK CARD PREVIEW --- */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-purple-600 font-bold tracking-widest text-sm">NEW CARD BACK (Variant {promotedStudent.card_variant})</span>
-                <div className="relative bg-white overflow-hidden shadow-2xl rounded-sm transform transition-transform hover:scale-105" style={{ width: "324px", height: "204px" }}>
+                <span className="text-purple-600 font-bold tracking-widest text-sm">
+                  NEW CARD BACK (Variant {promotedStudent.card_variant})
+                </span>
+                <div
+                  className="relative bg-white overflow-hidden shadow-2xl rounded-sm transform transition-transform hover:scale-105"
+                  style={{ width: "324px", height: "204px" }}
+                >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={`/id-back-${promotedStudent.card_variant}.jpg`} alt="Back" className="absolute inset-0 w-full h-full object-cover z-0" />
+                  <img
+                    src={`/id-back-${promotedStudent.card_variant}.jpg`}
+                    alt="Back"
+                    className="absolute inset-0 w-full h-full object-cover z-0"
+                  />
                 </div>
               </div>
-
             </div>
 
             <div className="flex w-full justify-center max-w-md">
-              <button 
+              <button
                 onClick={() => {
                   setPromotedStudent(null);
                   setPreviewQrUrl("");
@@ -323,7 +413,6 @@ export default function StudentsHub() {
                 Awesome! Close Window
               </button>
             </div>
-
           </div>
         </div>
       )}
@@ -336,15 +425,19 @@ export default function StudentsHub() {
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-2xl shadow-inner border border-indigo-100">
                 🎓
               </div>
-              <h1 className="text-3xl font-black text-slate-800 tracking-tight">Students Hub</h1>
+              <h1 className="text-3xl font-black text-slate-800 tracking-tight">
+                Students Hub
+              </h1>
             </div>
-            <p className="text-slate-500 font-medium">Manage enrollments, track dropouts, and request ID reprints.</p>
+            <p className="text-slate-500 font-medium">
+              Manage enrollments, track dropouts, and request ID reprints.
+            </p>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
-            <input 
-              type="text" 
-              placeholder="Search names, IDs, or grades..." 
+            <input
+              type="text"
+              placeholder="Search names, IDs, or grades..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full md:w-72 p-3 rounded-xl border border-slate-200 outline-none focus:border-indigo-500 shadow-sm font-medium"
@@ -353,22 +446,43 @@ export default function StudentsHub() {
         </header>
 
         <div className="flex gap-2 mb-6 bg-slate-200/50 p-1.5 rounded-xl w-fit">
-          <button onClick={() => setStatusFilter("active")} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Active Students</button>
-          <button onClick={() => setStatusFilter("dropped")} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "dropped" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Dropped Out</button>
-          <button onClick={() => setStatusFilter("all")} className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>All Records</button>
+          <button
+            onClick={() => setStatusFilter("active")}
+            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Active Students
+          </button>
+          <button
+            onClick={() => setStatusFilter("dropped")}
+            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "dropped" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            Dropped Out
+          </button>
+          <button
+            onClick={() => setStatusFilter("all")}
+            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+          >
+            All Records
+          </button>
         </div>
 
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           {isLoading ? (
-             <div className="flex flex-col items-center justify-center h-64">
-               <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
-               <p className="text-slate-400 font-bold animate-pulse">Loading Roster...</p>
-             </div>
+            <div className="flex flex-col items-center justify-center h-64">
+              <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
+              <p className="text-slate-400 font-bold animate-pulse">
+                Loading Roster...
+              </p>
+            </div>
           ) : filteredStudents.length === 0 ? (
             <div className="text-center py-20 px-4">
               <div className="text-5xl mb-4 opacity-50 grayscale">👻</div>
-              <h3 className="text-xl font-black text-slate-800">No students found</h3>
-              <p className="text-slate-500 font-medium mt-1">Try adjusting your search or filters.</p>
+              <h3 className="text-xl font-black text-slate-800">
+                No students found
+              </h3>
+              <p className="text-slate-500 font-medium mt-1">
+                Try adjusting your search or filters.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -385,26 +499,36 @@ export default function StudentsHub() {
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-sm">
                   {filteredStudents.map((student) => (
-                    <tr key={student.id} className={`transition-colors hover:bg-slate-50 ${!student.is_active ? 'opacity-60 bg-slate-50/50' : ''}`}>
-                      
+                    <tr
+                      key={student.id}
+                      className={`transition-colors hover:bg-slate-50 ${!student.is_active ? "opacity-60 bg-slate-50/50" : ""}`}
+                    >
                       <td className="p-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs border-2 ${student.is_active ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
-                            {SNT(student.full_name).substring(0, 2).toUpperCase()}
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-xs border-2 ${student.is_active ? "bg-indigo-50 text-indigo-600 border-indigo-100" : "bg-slate-100 text-slate-400 border-slate-200"}`}
+                          >
+                            {SNT(student.full_name)
+                              .substring(0, 2)
+                              .toUpperCase()}
                           </div>
                           <div>
-                            <p className="font-bold text-slate-800">{SNT(student.full_name)}</p>
-                            <p className="text-xs text-slate-500 mt-0.5">Enrolled: {student.enrollment_date}</p>
+                            <p className="font-bold text-slate-800">
+                              {SNT(student.full_name)}
+                            </p>
+                            <p className="text-xs text-slate-500 mt-0.5">
+                              Enrolled: {student.enrollment_date}
+                            </p>
                           </div>
                         </div>
                       </td>
-                      
+
                       <td className="p-4">
                         <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded font-mono text-xs font-bold border border-slate-200">
                           {student.qr_code}
                         </span>
                       </td>
-                      
+
                       <td className="p-4 font-bold text-slate-600">
                         {student.grade_batch}
                       </td>
@@ -412,19 +536,27 @@ export default function StudentsHub() {
                       <td className="p-4">
                         {student.cycle_classes >= 8 ? (
                           <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg flex items-center justify-between w-32 shadow-sm">
-                            <span className="text-xs font-black tracking-wider uppercase">Fee Due</span>
-                            <span className="font-mono font-bold text-sm text-red-500">8/8</span>
+                            <span className="text-xs font-black tracking-wider uppercase">
+                              Fee Due
+                            </span>
+                            <span className="font-mono font-bold text-sm text-red-500">
+                              8/8
+                            </span>
                           </div>
                         ) : (
                           <div className="w-32">
                             <div className="flex justify-between text-xs font-bold mb-1.5">
                               <span className="text-slate-500">Cycle</span>
-                              <span className="text-slate-700">{student.cycle_classes || 0}/8</span>
+                              <span className="text-slate-700">
+                                {student.cycle_classes || 0}/8
+                              </span>
                             </div>
                             <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                              <div 
+                              <div
                                 className="h-full bg-blue-500 rounded-full transition-all duration-500"
-                                style={{ width: `${((student.cycle_classes || 0) / 8) * 100}%` }}
+                                style={{
+                                  width: `${((student.cycle_classes || 0) / 8) * 100}%`,
+                                }}
                               ></div>
                             </div>
                           </div>
@@ -432,14 +564,15 @@ export default function StudentsHub() {
                       </td>
 
                       <td className="p-4 font-black text-amber-500">
-                        {student.total_xp} <span className="text-xs text-amber-300">XP</span>
+                        {student.total_xp}{" "}
+                        <span className="text-xs text-amber-300">XP</span>
                       </td>
 
                       <td className="p-4">
                         <div className="flex items-center justify-end gap-2 flex-wrap">
                           {student.is_active && (
                             <>
-                              <button 
+                              <button
                                 onClick={() => {
                                   setXpModal(student);
                                   setXpAmount(10);
@@ -450,7 +583,7 @@ export default function StudentsHub() {
                                 🎁 Award XP
                               </button>
 
-                              <button 
+                              <button
                                 onClick={() => {
                                   setPromotionModal(student);
                                   setNewGrade(student.grade_batch);
@@ -461,8 +594,13 @@ export default function StudentsHub() {
                                 🎲 Promote
                               </button>
 
-                              <button 
-                                onClick={() => requestReprint(student.id, SNT(student.full_name))}
+                              <button
+                                onClick={() =>
+                                  requestReprint(
+                                    student.id,
+                                    SNT(student.full_name),
+                                  )
+                                }
                                 className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
                                 title="Send to Print Hub"
                               >
@@ -470,16 +608,21 @@ export default function StudentsHub() {
                               </button>
                             </>
                           )}
-                          
-                          <button 
-                            onClick={() => toggleStudentStatus(student.id, student.is_active, SNT(student.full_name))}
-                            className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors whitespace-nowrap ${student.is_active ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+
+                          <button
+                            onClick={() =>
+                              toggleStudentStatus(
+                                student.id,
+                                student.is_active,
+                                SNT(student.full_name),
+                              )
+                            }
+                            className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors whitespace-nowrap ${student.is_active ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}
                           >
                             {student.is_active ? "Deactivate" : "Reactivate"}
                           </button>
                         </div>
                       </td>
-
                     </tr>
                   ))}
                 </tbody>
