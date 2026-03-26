@@ -11,6 +11,7 @@ import QuestHub from "@/components/dashboard/QuestHub";
 import ClassCycle from "@/components/dashboard/ClassCycle";
 import ArenaButton from "@/components/dashboard/ArenaButton";
 import VaultButton from "@/components/dashboard/VaultButton";
+import ExamVaultButton from "@/components/dashboard/ExamVaultButton";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -87,7 +88,7 @@ export default function StudentDashboard() {
     <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans selection:bg-indigo-500 selection:text-white relative">
       <TopNav studentName={student.full_name} />
 
-      <main className="p-4 md:p-8 max-w-4xl mx-auto space-y-4 md:space-y-6 relative z-10">
+      <main className="p-4 md:p-8 max-w-4xl mx-auto space-y-6 relative z-10">
         <HeroStats 
           totalXp={student.total_xp} 
           cardVariant={student.card_variant} 
@@ -98,15 +99,10 @@ export default function StudentDashboard() {
           <QuestHub activeQuests={activeQuests} />
           <ClassCycle studentId={student.id} cycleClasses={student.cycle_classes} />
           
-          {/* NEW: The Study Vault Button */}
           <VaultButton />
-
-          {/* PLACEHOLDER: Exam Vault (We will build this next!) */}
-          <div className="bg-slate-50 border border-dashed border-slate-300 rounded-[2rem] p-6 flex flex-col items-center justify-center text-center opacity-70">
-            <span className="text-2xl mb-2 grayscale">📊</span>
-            <h2 className="font-bold text-slate-500">Exam Results</h2>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Under Construction</p>
-          </div>
+          
+          {/* REPLACED THE PLACEHOLDER WITH THIS: */}
+          <ExamVaultButton />
 
           <div className="md:col-span-2 mt-2">
             <ArenaButton />
