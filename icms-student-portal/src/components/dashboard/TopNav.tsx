@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Lock } from "lucide-react";
 
 export default function TopNav({ studentName }: { studentName: string }) {
   const router = useRouter();
@@ -18,9 +19,9 @@ export default function TopNav({ studentName }: { studentName: string }) {
       </div>
       <button 
         onClick={handleSignOut}
-        className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-2"
+        className="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2.5 px-4 rounded-xl text-xs transition-colors shrink-0 flex items-center gap-2 active:scale-95"
       >
-        <span>🚪</span> Lock
+        <Lock className="w-4 h-4" /> Lock
       </button>
     </header>
   );
