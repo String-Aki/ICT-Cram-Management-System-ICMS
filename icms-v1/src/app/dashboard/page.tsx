@@ -22,11 +22,17 @@ export default function MainDashboard() {
 
   useEffect(() => {
     const checkSession = async () => {
-      setIsCheckingAuth(false);
-      fetchGlobalStats();
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        router.push("/");
+      } else {
+        setIsCheckingAuth(false);
+        fetchGlobalStats();
+      }
     };
     checkSession();
-  }, []);
+  }, [router]);
 
   const fetchGlobalStats = async () => {
     setIsLoading(true);

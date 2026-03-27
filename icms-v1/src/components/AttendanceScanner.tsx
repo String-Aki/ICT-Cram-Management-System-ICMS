@@ -237,7 +237,8 @@ export default function AttendanceScanner({
       </div>
 
       <div
-        className={`relative w-full aspect-square rounded-[2.5rem] overflow-hidden border-8 transition-all duration-300 ${stateStyles[scanState].split(" bg-")[0]} bg-slate-900`}
+        className={`relative w-full aspect-square rounded-[2.5rem] overflow-hidden border-8 transition-all duration-300 ${stateStyles[scanState].split(" bg-")[0]} bg-slate-900 [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:rounded-[1.8rem]`}
+        style={{ WebkitTransform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
       >
         <Scanner
           onScan={(result) => {
