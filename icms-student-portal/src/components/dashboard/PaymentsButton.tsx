@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CreditCard, ArrowRight } from "lucide-react";
 
 export default function PaymentsButton() {
   return (
@@ -11,13 +12,13 @@ export default function PaymentsButton() {
       
       <div>
         <h2 className="font-black text-slate-800 text-xl flex items-center gap-2 mb-1 group-hover:text-emerald-600 transition-colors">
-          <span className="text-2xl">💳</span> Fee & Receipts
+          <CreditCard className="w-6 h-6 text-emerald-500" /> Fee & Receipts
         </h2>
         <p className="text-sm font-medium text-slate-500 mb-6">View your payment history and download receipts.</p>
       </div>
 
       <div className="flex items-center text-xs font-bold text-emerald-600 uppercase tracking-widest gap-1 group-hover:gap-2 transition-all">
-        Open Ledger <span>→</span>
+        Open Ledger <ArrowRight className="w-4 h-4" />
       </div>
     </Link>
   );

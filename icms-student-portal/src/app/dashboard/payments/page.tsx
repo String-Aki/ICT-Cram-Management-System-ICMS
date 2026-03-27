@@ -6,6 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { toPng } from "html-to-image";
 import { jsPDF } from "jspdf";
+import { CreditCard, ArrowLeft, ArrowRight, Download, Loader2, X, Check } from "lucide-react";
 
 export default function PaymentsPage() {
   const router = useRouter();
@@ -16,7 +17,6 @@ export default function PaymentsPage() {
 
   const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
 
-  // NEW: Reference to the receipt container and loading state for the download
   const receiptRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -56,7 +56,6 @@ export default function PaymentsPage() {
     fetchData();
   }, [router]);
 
-  // UPGRADED: Direct PDF Download Logic with Forced Dimensions
   const handleDownloadPDF = async () => {
     const element = receiptRef.current;
     if (!element) return;
@@ -64,11 +63,9 @@ export default function PaymentsPage() {
     setIsDownloading(true);
 
     try {
-      // 1. Grab the TRUE height of the receipt, ignoring screen limits
       const fullHeight = element.scrollHeight;
       const fullWidth = element.scrollWidth;
 
-      // 2. Take a high-resolution screenshot using forced dimensions
       const imgData = await toPng(element, {
         quality: 1,
         pixelRatio: 2,
@@ -81,12 +78,10 @@ export default function PaymentsPage() {
         },
       });
 
-      // 3. Calculate dimensions for an A4 page
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (fullHeight * pdfWidth) / fullWidth;
 
-      // 4. Add Image and Download!
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
 
       const shortId = selectedReceipt.id.split("-")[0].toUpperCase();
@@ -120,7 +115,7 @@ export default function PaymentsPage() {
           href="/dashboard"
           className="inline-flex items-center gap-2 text-emerald-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors mb-8 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md"
         >
-          <span>←</span> Back to Dashboard
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
 
         <div className="mb-12 animate-in slide-in-from-top-4 fade-in duration-500">
@@ -133,8 +128,8 @@ export default function PaymentsPage() {
         </div>
 
         {payments.length === 0 ? (
-          <div className="text-center p-12 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md animate-in fade-in duration-700">
-            <span className="text-5xl mb-4 block grayscale opacity-30">💳</span>
+          <div className="text-center p-12 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md animate-in fade-in duration-700 flex flex-col items-center">
+            <CreditCard className="w-16 h-16 mb-4 text-slate-400 opacity-30" />
             <p className="font-bold text-slate-400">No payments found.</p>
           </div>
         ) : (
@@ -180,9 +175,9 @@ export default function PaymentsPage() {
                   </span>
                   <button
                     onClick={() => setSelectedReceipt(payment)}
-                    className="text-xs font-bold text-emerald-500 hover:text-emerald-300 uppercase tracking-widest mt-1 underline decoration-emerald-500/30 underline-offset-4 transition-colors"
+                    className="text-xs font-bold text-emerald-500 hover:text-emerald-300 uppercase tracking-widest mt-1 underline decoration-emerald-500/30 underline-offset-4 transition-colors flex items-center gap-1"
                   >
-                    View Receipt →
+                    View Receipt <ArrowRight className="w-3 h-3" />
                   </button>
                 </div>
               </div>
@@ -209,16 +204,16 @@ export default function PaymentsPage() {
                 <button
                   onClick={handleDownloadPDF}
                   disabled={isDownloading}
-                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-1.5 px-3 rounded-lg text-xs transition-colors flex items-center gap-1 disabled:opacity-50"
+                  className="bg-emerald-100 hover:bg-emerald-200 text-emerald-700 font-bold py-1.5 px-3 rounded-lg text-xs transition-colors flex items-center gap-1.5 disabled:opacity-50"
                 >
-                  <span>{isDownloading ? "⏳" : "⬇️"}</span>{" "}
+                  {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                   {isDownloading ? "Generating..." : "Download PDF"}
                 </button>
                 <button
                   onClick={() => setSelectedReceipt(null)}
                   className="w-8 h-8 bg-slate-200 hover:bg-slate-300 text-slate-500 rounded-full flex items-center justify-center transition-colors"
                 >
-                  ✕
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -226,11 +221,11 @@ export default function PaymentsPage() {
             {/* === TARGET FOR PDF SCREENSHOT === */}
             <div className="p-8 bg-white" ref={receiptRef}>
               <div className="text-center mb-8 pb-8 border-b-2 border-dashed border-slate-200">
-                <div className="w-12 h-12 bg-slate-900 rounded-xl mx-auto flex items-center justify-center text-white font-black text-xl mb-3">
-                  IC
+                <div className="w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                  <img src="/icon.png" alt="ICT CRAM Logo" className="w-full h-full object-contain" />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">
-                  ICMS Academy
+                  ICT CRAM
                 </h2>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
                   Payment Receipt
@@ -286,8 +281,8 @@ export default function PaymentsPage() {
                 <p className="text-4xl font-black text-emerald-600">
                   Rs. {selectedReceipt.amount.toLocaleString()}
                 </p>
-                <div className="mt-2 inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2 py-1 rounded-md">
-                  <span>✓</span> Payment Successful
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-emerald-100 text-emerald-700 text-[10px] font-black uppercase tracking-widest px-2.5 py-1.5 rounded-md">
+                  <Check className="w-3.5 h-3.5" /> Payment Successful
                 </div>
               </div>
 
@@ -304,7 +299,7 @@ export default function PaymentsPage() {
 
               <div className="text-center pt-8 border-t-2 border-dashed border-slate-200">
                 <p className="text-xs font-bold text-slate-400">
-                  Thank you for studying with ICMS Academy.
+                  Payment received with thanks. Thank you for choosing ICT Cram.
                 </p>
                 <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest">
                   System Generated Receipt
