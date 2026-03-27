@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -14,18 +15,17 @@ export default function Sidebar() {
     setIsMounted(true);
   }, []);
 
-  // Hide sidebar entirely on the Auth/Landing page and the Kiosk page
   if (pathname === "/" || pathname === "/check-in") {
     return null;
   }
 
-  const handleSignOut = () => {
-    localStorage.removeItem("icms_admin_auth");
-    router.push("/");
+const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = "/";
   };
 
   const navLinks = [
-    { name: "Dashboard", href: "/dashboard", icon: "📊" }, // Updated to /dashboard
+    { name: "Dashboard", href: "/dashboard", icon: "📊" },
     { name: "Enroll", href: "/enroll", icon: "📋" },
     { name: "Students Hub", href: "/students", icon: "🎓" },
     { name: "Attendance", href: "/attendance", icon: "✅" },

@@ -1,25 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { supabase } from "@/lib/supabase"; // <-- Added Supabase
 
 export default function AdminAuthPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  // Auto-redirect if already logged in
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        window.location.href = "/dashboard";
+      }
+    };
+    checkSession();
+  }, []);
+
+  const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsAuthenticating(true);
+    setErrorMsg("");
 
-    // Phase 2 Simulated Auth - Will be replaced by Supabase Auth in Phase 3
-    setTimeout(() => {
-      localStorage.setItem("icms_admin_auth", "true");
-      router.push("/dashboard");
-    }, 800);
+    // REAL Supabase Authentication
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setErrorMsg(error.message);
+      setIsAuthenticating(false);
+    } else {
+      // Bulletproof redirect for iOS Safari
+      window.location.href = "/dashboard";
+    }
   };
 
   return (
@@ -30,20 +52,14 @@ export default function AdminAuthPage() {
 
         <div className="relative z-10">
           <div className="w-32 h-32 bg-white rounded-2xl border-4 border-indigo-500 shadow-xl overflow-hidden mb-8 relative">
-            <Image
-              src="/icon.png"
-              alt="ICMS Logo"
-              fill
-              className="object-cover"
-            />
+            <Image src="/icon.png" alt="ICMS Logo" fill className="object-cover" />
           </div>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4 leading-tight">
             ICMS Academy <br />
             <span className="text-indigo-400">Terminal</span>
           </h1>
           <p className="text-slate-400 font-medium text-lg max-w-sm mb-12">
-            Secure management system for administrators, and quick-access
-            scanning for students.
+            Secure management system for administrators, and quick-access scanning for students.
           </p>
         </div>
 
@@ -52,8 +68,7 @@ export default function AdminAuthPage() {
             <div className="text-5xl mb-4">📷</div>
             <h2 className="text-2xl font-black mb-2">Automated Attendance</h2>
             <p className="text-slate-400 text-sm mb-8">
-              Launch the QR scanner. This mode does not require
-              administrator authentication.
+              Launch the QR scanner. This mode does not require administrator authentication.
             </p>
             <Link
               href="/check-in"
@@ -72,19 +87,13 @@ export default function AdminAuthPage() {
             <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 text-blue-600 rounded-full text-2xl mb-4 shadow-inner border border-blue-100">
               🔒
             </div>
-            <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">
-              Admin Portal
-            </h2>
-            <p className="text-slate-500 font-medium">
-              Please authenticate to access the dashboard.
-            </p>
+            <h2 className="text-3xl font-black text-slate-800 tracking-tight mb-2">Admin Portal</h2>
+            <p className="text-slate-500 font-medium">Please authenticate to access the dashboard.</p>
           </div>
 
           <form onSubmit={handleAdminLogin} className="space-y-5">
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                Email Address
-              </label>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Email Address</label>
               <input
                 type="email"
                 required
@@ -96,9 +105,7 @@ export default function AdminAuthPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                Password
-              </label>
+              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Password</label>
               <input
                 type="password"
                 required
@@ -108,6 +115,12 @@ export default function AdminAuthPage() {
                 className="w-full bg-white border-2 border-slate-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 rounded-2xl px-5 py-4 text-slate-800 font-medium outline-none transition-all"
               />
             </div>
+
+            {errorMsg && (
+              <div className="p-3 bg-red-50 text-red-600 border border-red-200 rounded-xl text-sm font-bold text-center animate-in fade-in">
+                {errorMsg}
+              </div>
+            )}
 
             <button
               type="submit"
@@ -121,12 +134,6 @@ export default function AdminAuthPage() {
               )}
             </button>
           </form>
-
-          <div className="mt-12 text-center">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-              Powered by ICMS v1.0
-            </p>
-          </div>
         </div>
       </div>
     </div>
