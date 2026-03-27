@@ -129,8 +129,8 @@ export default function StudentLoginGateway() {
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-4 font-sans relative overflow-hidden selection:bg-blue-100 selection:text-blue-900">
       {/* Background Meshes */}
       <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-        <div className="absolute -top-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/40 blur-[100px]"></div>
-        <div className="absolute bottom-[10%] -left-[10%] w-[40vw] h-[40vw] rounded-full bg-sky-200/30 blur-[100px]"></div>
+        <div className="absolute -top-[10%] -right-[10%] w-[50vw] h-[50vw] bg-[radial-gradient(circle,_rgba(191,219,254,0.4)_0%,_transparent_60%)]"></div>
+        <div className="absolute bottom-[10%] -left-[10%] w-[40vw] h-[40vw] bg-[radial-gradient(circle,_rgba(186,230,253,0.3)_0%,_transparent_60%)]"></div>
       </div>
 
       <div className="w-full max-w-md relative z-10">

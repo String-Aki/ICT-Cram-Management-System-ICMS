@@ -10,12 +10,14 @@ import TopNav from "@/components/dashboard/TopNav";
 import HeroStats from "@/components/dashboard/HeroStats";
 import QuestHub from "@/components/dashboard/QuestHub";
 import ClassCycle from "@/components/dashboard/ClassCycle";
+import ScheduleButton from "@/components/dashboard/ScheduleButton";
 import ArenaButton from "@/components/dashboard/ArenaButton";
 import VaultButton from "@/components/dashboard/VaultButton";
 import ExamVaultButton from "@/components/dashboard/ExamVaultButton";
 import PaymentsButton from "@/components/dashboard/PaymentsButton";
 import AchievementsButton from "@/components/dashboard/AchievementsButton";
 import XpLedgerButton from "@/components/dashboard/XpLedgerButton";
+import SettingsButton from "@/components/dashboard/SettingsButton";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -68,8 +70,12 @@ export default function StudentDashboard() {
           materials?.filter((m) => !completedIds.has(m.id)) || [];
 
         setActiveQuests(pendingQuests);
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
+        if (error?.code === 'PGRST116') {
+          localStorage.removeItem("icms_active_student");
+          router.replace("/");
+        }
       } finally {
         setTimeout(() => setIsLoading(false), 800);
       }
@@ -82,7 +88,7 @@ export default function StudentDashboard() {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4 relative">
         {/* Soft ambient blur */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-blue-200/30 rounded-full blur-[80px] animate-pulse pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-[radial-gradient(circle,_rgba(191,219,254,0.3)_0%,_transparent_70%)] animate-pulse pointer-events-none"></div>
 
         <div className="relative z-10 bg-white rounded-[2rem] shadow-[0_10px_40px_rgba(59,130,246,0.1)] border border-blue-50 flex flex-col items-center justify-center h-32 w-56 gap-8">
           <div className="mt-4">
@@ -99,17 +105,17 @@ export default function StudentDashboard() {
   if (!student) return null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden animate-in fade-in duration-700">
+    <div className="min-h-screen bg-[#F8FAFC] pb-24 font-sans selection:bg-blue-100 selection:text-blue-900 relative overflow-hidden">
       {/* Ambient Background Meshes */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none fixed">
-        <div className="absolute -top-[10%] -right-[10%] w-[50vw] h-[50vw] rounded-full bg-blue-200/30 blur-[100px]"></div>
-        <div className="absolute top-[40%] -left-[10%] w-[40vw] h-[40vw] rounded-full bg-sky-200/20 blur-[100px]"></div>
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+        <div className="absolute -top-[10%] -right-[10%] w-[50vw] h-[50vw] bg-[radial-gradient(circle,_rgba(191,219,254,0.3)_0%,_transparent_60%)]"></div>
+        <div className="absolute top-[40%] -left-[10%] w-[40vw] h-[40vw] bg-[radial-gradient(circle,_rgba(186,230,253,0.3)_0%,_transparent_60%)]"></div>
       </div>
 
       <div className="relative z-10">
         <TopNav studentName={student.full_name} />
 
-        <main className="p-4 md:p-8 max-w-4xl mx-auto space-y-5 animate-in slide-in-from-bottom-4 duration-500 delay-150 fill-mode-both">
+        <main className="p-4 md:p-8 max-w-4xl mx-auto space-y-5">
           <HeroStats
             totalXp={student.total_xp}
             cardVariant={student.card_variant}
@@ -122,12 +128,14 @@ export default function StudentDashboard() {
               studentId={student.id}
               cycleClasses={student.cycle_classes}
             />
+            <ScheduleButton />
 
             <VaultButton />
             <ExamVaultButton />
             <PaymentsButton />
             <AchievementsButton />
             <XpLedgerButton />
+            <SettingsButton />
 
             <div className="md:col-span-2 mt-2">
               <ArenaButton />
