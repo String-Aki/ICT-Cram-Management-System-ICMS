@@ -27,6 +27,7 @@ const handleSignOut = async () => {
   const navLinks = [
     { name: "Dashboard", href: "/dashboard", icon: "📊" },
     { name: "Enroll", href: "/enroll", icon: "📋" },
+    { name: "Schedule", href: "/schedule", icon: "⏰" },
     { name: "Students Hub", href: "/students", icon: "🎓" },
     { name: "Attendance", href: "/attendance", icon: "✅" },
     { name: "Financials", href: "/payments", icon: "💳" },
