@@ -1,5 +1,5 @@
 {
-  "name": "ICMS v1.0",
+  "name": "ICMS Admin",
   "short_name": "ICMS",
   "description": "Tuition Center Management System",
   "start_url": "/",
@@ -8,7 +8,7 @@
   "theme_color": "#2563eb",
   "icons": [
     {
-      "src": "/icon-512.png",
+      "src": "/icon.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

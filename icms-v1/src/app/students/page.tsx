@@ -32,6 +32,9 @@ export default function StudentsHub() {
   const [xpAmount, setXpAmount] = useState<number>(50);
   const [isAwardingXp, setIsAwardingXp] = useState(false);
 
+  // New state to track which row's dropdown is currently open
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
   useEffect(() => {
     fetchStudents();
   }, [statusFilter]);
@@ -142,7 +145,6 @@ export default function StudentsHub() {
     setIsAwardingXp(true);
 
     try {
-      // 1. WRITE THE XP RECEIPT FIRST
       const { error: txError } = await supabase.from("xp_transactions").insert([
         {
           student_id: xpModal.id,
@@ -153,7 +155,6 @@ export default function StudentsHub() {
 
       if (txError) throw txError;
 
-      // 2. Update the Student's Total XP
       const newTotalXp = xpModal.total_xp + xpAmount;
 
       const { error: updateError } = await supabase
@@ -187,6 +188,12 @@ export default function StudentsHub() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
+      
+      {/* Invisible overlay to close dropdown when clicking outside */}
+      {openMenuId && (
+        <div className="fixed inset-0 z-30" onClick={() => setOpenMenuId(null)}></div>
+      )}
+
       {/* MODAL: MANUAL XP AWARD */}
       {xpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -345,7 +352,6 @@ export default function StudentsHub() {
                     alt="Front"
                     className="absolute inset-0 w-full h-full object-cover z-0"
                   />
-
                   <div className="absolute z-10 top-[42px] left-[190px] w-[110px]">
                     <p
                       className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}
@@ -353,7 +359,6 @@ export default function StudentsHub() {
                       {SNT(promotedStudent.full_name)}
                     </p>
                   </div>
-
                   <div className="absolute z-10 top-[80px] left-[190px]">
                     <p
                       className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}
@@ -361,7 +366,6 @@ export default function StudentsHub() {
                       {promotedStudent.grade_batch}
                     </p>
                   </div>
-
                   <div className="absolute z-10 bottom-[35px] left-[95px]">
                     <p
                       className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}
@@ -369,7 +373,6 @@ export default function StudentsHub() {
                       {promotedStudent.qr_code}
                     </p>
                   </div>
-
                   {previewQrUrl && (
                     <div className="absolute z-10 top-[30px] left-[30px] w-[80px] h-[80px] bg-white p-1 rounded">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -445,22 +448,22 @@ export default function StudentsHub() {
           </div>
         </header>
 
-        <div className="flex gap-2 mb-6 bg-slate-200/50 p-1.5 rounded-xl w-fit">
+        <div className="flex gap-2 mb-6 bg-slate-200/50 p-1.5 rounded-xl w-fit overflow-x-auto max-w-full custom-scrollbar">
           <button
             onClick={() => setStatusFilter("active")}
-            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`px-4 md:px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${statusFilter === "active" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             Active Students
           </button>
           <button
             onClick={() => setStatusFilter("dropped")}
-            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "dropped" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`px-4 md:px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${statusFilter === "dropped" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             Dropped Out
           </button>
           <button
             onClick={() => setStatusFilter("all")}
-            className={`px-6 py-2 rounded-lg font-bold text-sm transition-all ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+            className={`px-4 md:px-6 py-2 rounded-lg font-bold text-sm transition-all whitespace-nowrap ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
           >
             All Records
           </button>
@@ -485,7 +488,7 @@ export default function StudentsHub() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest border-b border-slate-100">
@@ -523,7 +526,8 @@ export default function StudentsHub() {
                         </div>
                       </td>
 
-                      <td className="p-4">
+                      {/* ADDED whitespace-nowrap right here to prevent wrapping! */}
+                      <td className="p-4 whitespace-nowrap">
                         <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded font-mono text-xs font-bold border border-slate-200">
                           {student.qr_code}
                         </span>
@@ -535,7 +539,7 @@ export default function StudentsHub() {
 
                       <td className="p-4">
                         {student.cycle_classes >= 8 ? (
-                          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg flex items-center justify-between w-32 shadow-sm">
+                          <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-1.5 rounded-lg flex items-center justify-between w-28 md:w-32 shadow-sm">
                             <span className="text-xs font-black tracking-wider uppercase">
                               Fee Due
                             </span>
@@ -544,7 +548,7 @@ export default function StudentsHub() {
                             </span>
                           </div>
                         ) : (
-                          <div className="w-32">
+                          <div className="w-28 md:w-32">
                             <div className="flex justify-between text-xs font-bold mb-1.5">
                               <span className="text-slate-500">Cycle</span>
                               <span className="text-slate-700">
@@ -563,64 +567,72 @@ export default function StudentsHub() {
                         )}
                       </td>
 
-                      <td className="p-4 font-black text-amber-500">
+                      {/* Added whitespace-nowrap here too, just to be extra safe! */}
+                      <td className="p-4 font-black text-amber-500 whitespace-nowrap">
                         {student.total_xp}{" "}
                         <span className="text-xs text-amber-300">XP</span>
                       </td>
 
                       <td className="p-4">
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          {student.is_active && (
-                            <>
-                              <button
-                                onClick={() => {
-                                  setXpModal(student);
-                                  setXpAmount(10);
-                                }}
-                                className="px-3 py-1.5 bg-amber-50 text-amber-600 hover:bg-amber-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
-                                title="Award Custom XP"
-                              >
-                                🎁 Award XP
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setPromotionModal(student);
-                                  setNewGrade(student.grade_batch);
-                                }}
-                                className="px-3 py-1.5 bg-purple-50 text-purple-600 hover:bg-purple-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
-                                title="Update Grade & Re-roll Card"
-                              >
-                                🎲 Promote
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  requestReprint(
-                                    student.id,
-                                    SNT(student.full_name),
-                                  )
-                                }
-                                className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs rounded-lg transition-colors inline-flex items-center gap-1 whitespace-nowrap"
-                                title="Send to Print Hub"
-                              >
-                                🖨️ Reprint
-                              </button>
-                            </>
-                          )}
-
+                        <div className="flex justify-end relative">
                           <button
-                            onClick={() =>
-                              toggleStudentStatus(
-                                student.id,
-                                student.is_active,
-                                SNT(student.full_name),
-                              )
-                            }
-                            className={`px-3 py-1.5 font-bold text-xs rounded-lg transition-colors whitespace-nowrap ${student.is_active ? "bg-red-50 text-red-600 hover:bg-red-100" : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100"}`}
+                            onClick={() => setOpenMenuId(openMenuId === student.id ? null : student.id)}
+                            className="px-4 py-2 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-2 active:scale-95 shadow-sm"
                           >
-                            {student.is_active ? "Deactivate" : "Reactivate"}
+                            ⚙️ Options
                           </button>
+
+                          {openMenuId === student.id && (
+                            <div className="absolute right-0 top-full mt-2 z-40 bg-white border border-slate-200 shadow-xl rounded-2xl p-2 flex flex-col gap-1 w-48 animate-in fade-in zoom-in-95 duration-200 origin-top-right">
+                              {student.is_active && (
+                                <>
+                                  <button
+                                    onClick={() => {
+                                      setXpModal(student);
+                                      setXpAmount(10);
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-amber-50 text-amber-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-3"
+                                  >
+                                    <span className="text-base">🎁</span> Award XP
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      setPromotionModal(student);
+                                      setNewGrade(student.grade_batch);
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-purple-50 text-purple-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-3"
+                                  >
+                                    <span className="text-base">🎲</span> Promote
+                                  </button>
+
+                                  <button
+                                    onClick={() => {
+                                      requestReprint(student.id, SNT(student.full_name));
+                                      setOpenMenuId(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2.5 hover:bg-blue-50 text-blue-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-3"
+                                  >
+                                    <span className="text-base">🖨️</span> Reprint
+                                  </button>
+                                  <div className="h-px bg-slate-100 my-1 mx-2"></div>
+                                </>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  toggleStudentStatus(student.id, student.is_active, SNT(student.full_name));
+                                  setOpenMenuId(null);
+                                }}
+                                className={`w-full text-left px-3 py-2.5 font-bold text-xs rounded-xl transition-colors flex items-center gap-3 ${student.is_active ? "hover:bg-red-50 text-red-600" : "hover:bg-emerald-50 text-emerald-600"}`}
+                              >
+                                <span className="text-base">{student.is_active ? "🛑" : "✅"}</span> 
+                                {student.is_active ? "Deactivate" : "Reactivate"}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
