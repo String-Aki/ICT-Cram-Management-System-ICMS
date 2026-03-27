@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Trophy, ArrowRight } from "lucide-react";
 
 export default function AchievementsButton() {
   return (
@@ -11,13 +12,13 @@ export default function AchievementsButton() {
       
       <div>
         <h2 className="font-black text-slate-800 text-xl flex items-center gap-2 mb-1 group-hover:text-rose-600 transition-colors">
-          <span className="text-2xl">🏅</span> Trophy Room
+          <Trophy className="w-6 h-6 text-rose-500" /> Trophy Room
         </h2>
         <p className="text-sm font-medium text-slate-500 mb-6">View your unlocked stickers, badges, and achievements.</p>
       </div>
 
       <div className="flex items-center text-xs font-bold text-rose-600 uppercase tracking-widest gap-1 group-hover:gap-2 transition-all">
-        View Collection <span>→</span>
+        View Collection <ArrowRight className="w-4 h-4" />
       </div>
     </Link>
   );

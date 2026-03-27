@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
 import { RANKS, ACHIEVEMENTS } from "@/lib/gamification";
+import { ArrowLeft, Trophy, Shield, Medal, Lock } from "lucide-react";
 
 export default function AchievementsPage() {
   const router = useRouter();
@@ -71,12 +72,12 @@ export default function AchievementsPage() {
           href="/dashboard"
           className="inline-flex items-center gap-2 text-rose-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors mb-8 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md"
         >
-          <span>←</span> Back to Dashboard
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
 
         <div className="mb-12 animate-in slide-in-from-top-4 fade-in duration-500">
-          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg mb-2">
-            Trophy Room
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg mb-2 flex items-center gap-4">
+            <Trophy className="w-10 h-10 text-rose-500" /> Trophy Room
           </h1>
           <p className="text-rose-300 font-bold uppercase tracking-widest text-xs">
             Stickers & Progression
@@ -84,8 +85,8 @@ export default function AchievementsPage() {
         </div>
 
         {/* --- SECTION 1: XP RANKS --- */}
-        <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-          <span>🛡️</span> Progression Ranks
+        <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+          <Shield className="w-6 h-6 text-rose-500" /> Progression Ranks
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-12">
           {RANKS.map((rank, index) => {
@@ -101,7 +102,7 @@ export default function AchievementsPage() {
                   <div
                     className={`w-16 h-16 mx-auto rounded-full flex items-center justify-center text-4xl mb-2 ${isUnlocked ? "bg-white/20 shadow-inner" : "bg-slate-800"}`}
                   >
-                    {rank.icon}
+                    {rank.emoji}
                   </div>
                   <span
                     className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${isUnlocked ? "text-white border-white/30 bg-white/10" : "border-slate-600 text-slate-500"}`}
@@ -118,8 +119,8 @@ export default function AchievementsPage() {
                   {rank.desc}
                 </p>
                 {!isUnlocked && (
-                  <div className="absolute top-3 right-3 text-slate-600 text-lg">
-                    🔒
+                  <div className="absolute top-4 right-4 text-slate-500">
+                    <Lock className="w-4 h-4" />
                   </div>
                 )}
               </div>
@@ -128,8 +129,8 @@ export default function AchievementsPage() {
         </div>
 
         {/* --- SECTION 2: SPECIAL BADGES --- */}
-        <h2 className="text-xl font-black text-white mb-4 flex items-center gap-2">
-          <span>🏅</span> Special Badges
+        <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+          <Medal className="w-6 h-6 text-rose-500" /> Special Badges
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {ACHIEVEMENTS.map((ach, index) => {
@@ -162,8 +163,8 @@ export default function AchievementsPage() {
                   {ach.desc}
                 </p>
                 {!isUnlocked && (
-                  <div className="absolute top-3 right-3 text-slate-600 text-lg">
-                    🔒
+                  <div className="absolute top-4 right-4 text-slate-500">
+                    <Lock className="w-4 h-4" />
                   </div>
                 )}
               </div>

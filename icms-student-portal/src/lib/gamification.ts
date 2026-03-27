@@ -1,9 +1,9 @@
 export const RANKS = [
-  { id: "rank_1", name: "Pixel Pioneer", min: 0, desc: "Unlocked on first ID scan.", color: "from-slate-400 to-slate-500", bg: "bg-slate-100", border: "border-slate-300", text: "text-slate-600", icon: "Sprout" },
-  { id: "rank_2", name: "Circuit Surfer", min: 300, desc: "Reached 300 XP.", color: "from-blue-400 to-blue-600", bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-700", icon: "Waves" },
-  { id: "rank_3", name: "Tech Ranger", min: 900, desc: "Reached 900 XP.", color: "from-emerald-400 to-emerald-600", bg: "bg-emerald-50", border: "border-emerald-300", text: "text-emerald-700", icon: "Shield" },
-  { id: "rank_4", name: "Neon Knight", min: 2000, desc: "Reached 2,000 XP.", color: "from-purple-500 to-pink-500", bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-700", icon: "Swords" },
-  { id: "rank_5", name: "Digital Legend", min: 5000, desc: "Reached 5,000 XP.", color: "from-amber-400 to-orange-500", bg: "bg-amber-50", border: "border-amber-300", text: "text-amber-700", icon: "Crown" },
+  { id: "rank_1", name: "Pixel Pioneer", min: 0, desc: "Unlocked on first ID scan.", color: "from-slate-400 to-slate-500", bg: "bg-slate-100", border: "border-slate-300", text: "text-slate-600", icon: "Sprout", emoji: "🌱" },
+  { id: "rank_2", name: "Circuit Surfer", min: 300, desc: "Reached 300 XP.", color: "from-blue-400 to-blue-600", bg: "bg-blue-50", border: "border-blue-300", text: "text-blue-700", icon: "Waves", emoji: "🌊" },
+  { id: "rank_3", name: "Tech Ranger", min: 900, desc: "Reached 900 XP.", color: "from-emerald-400 to-emerald-600", bg: "bg-emerald-50", border: "border-emerald-300", text: "text-emerald-700", icon: "Shield", emoji: "🛡️" },
+  { id: "rank_4", name: "Neon Knight", min: 2000, desc: "Reached 2,000 XP.", color: "from-purple-500 to-pink-500", bg: "bg-purple-50", border: "border-purple-300", text: "text-purple-700", icon: "Swords", emoji: "⚔️" },
+  { id: "rank_5", name: "Digital Legend", min: 5000, desc: "Reached 5,000 XP.", color: "from-amber-400 to-orange-500", bg: "bg-amber-50", border: "border-amber-300", text: "text-amber-700", icon: "Crown", emoji: "👑" },
 ];
 
 export const ACHIEVEMENTS = [
@@ -15,23 +15,19 @@ export const ACHIEVEMENTS = [
   { id: "perfect_exam", name: "Flawless Victory", desc: "Score 100% on any major examination.", icon: "🎯", bg: "bg-rose-50", border: "border-rose-300", text: "text-rose-600" },
 ];
 
-// Add this to the bottom of lib/gamification.ts
-
 export function calculateRank(totalXp: number) {
-  // 1. Find the current rank by looping through the thresholds
   let currentRankIndex = 0;
   for (let i = 0; i < RANKS.length; i++) {
     if (totalXp >= RANKS[i].min) {
       currentRankIndex = i;
     } else {
-      break; // Stop when we hit a rank they haven't reached yet
+      break; 
     }
   }
 
   const currentRank = RANKS[currentRankIndex];
-  const nextRank = RANKS[currentRankIndex + 1]; // Will be undefined if they are max rank
+  const nextRank = RANKS[currentRankIndex + 1]; 
 
-  // 2. Calculate the progress bar math
   let progressPercentage = 100;
   let xpToNext = 0;
 
@@ -42,7 +38,6 @@ export function calculateRank(totalXp: number) {
     xpToNext = nextRank.min - totalXp;
   }
 
-  // 3. Return everything the frontend needs
   return {
     level: currentRankIndex + 1,
     rankName: currentRank.name,
