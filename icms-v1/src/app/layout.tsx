@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ICMS v1.0",
+  title: "ICMS Admin",
   description: "Tuition Center Management System",
   manifest: "/manifest.json",
 };

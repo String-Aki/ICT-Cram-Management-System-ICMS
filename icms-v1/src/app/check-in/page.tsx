@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import AttendanceScanner from "@/components/AttendanceScanner";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 export default function AttendanceKiosk() {
   const [lastScanned, setLastScanned] = useState<any | null>(null);
@@ -83,6 +85,16 @@ export default function AttendanceKiosk() {
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-6 lg:p-8 flex flex-col font-sans">
+      {/* --- EXIT BUTTON --- */}
+      <div className="mb-4">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 text-xs font-bold uppercase tracking-widest transition-colors bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm w-fit active:scale-95"
+        >
+          <ArrowLeft className="w-4 h-4" /> Exit Kiosk
+        </Link>
+      </div>
+
       {/* --- KIOSK HEADER --- */}
       <header className="mb-6 flex flex-col md:flex-row justify-between items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-slate-200/60">
         <div className="flex items-center gap-4">

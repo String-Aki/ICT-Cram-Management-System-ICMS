@@ -128,58 +128,45 @@ export default function EnrollStudentForm() {
 
   return (
     <>
+      {/* Modal logic remains entirely unchanged to preserve your specific ID Card alignment mapping */}
       {newStudent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4 overflow-y-auto">
-
-          <div className="bg-white p-6 md:p-8 rounded-3xl shadow-2xl flex flex-col items-center max-w-5xl w-full border border-slate-200 my-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/95 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-300">
+          <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-2xl flex flex-col items-center max-w-5xl w-full border border-slate-200 my-4 animate-in zoom-in-95 duration-500">
             
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-green-100 mb-2 md:mb-4">
+              <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-emerald-100 text-emerald-600 mb-4 shadow-inner">
                 <span className="text-2xl md:text-3xl">🎉</span>
               </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-800">Student Enrolled!</h2>
+              <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">Student Enrolled!</h2>
             </div>
 
-            <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 w-full max-w-lg flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 shadow-sm">
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 w-full max-w-lg flex flex-col sm:flex-row items-center justify-between gap-4 mb-8 shadow-sm">
               <div className="text-center sm:text-left">
-                <p className="text-sm text-blue-700 font-bold uppercase tracking-wider">App Login PIN</p>
-                <p className="text-xs text-slate-500 mt-1">Temporary password for their first login.</p>
+                <p className="text-[10px] text-indigo-600 font-black uppercase tracking-widest">App Login PIN</p>
+                <p className="text-xs font-bold text-slate-500 mt-1">Temporary password for first login.</p>
               </div>
-              <div className="bg-white px-5 py-2 rounded-lg border border-blue-200 shadow-inner">
-                <p className="text-3xl font-mono font-bold text-slate-800 tracking-[0.15em] m-0">{newStudent.pin}</p>
+              <div className="bg-white px-6 py-3 rounded-xl border border-indigo-200 shadow-sm">
+                <p className="text-3xl font-mono font-black text-slate-800 tracking-[0.2em] m-0">{newStudent.pin}</p>
               </div>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center mb-8">
-              
+            <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-center justify-center mb-10">
               {/* --- FRONT CARD --- */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-slate-400 font-bold tracking-widest text-sm">FRONT PREVIEW</span>
-                <div className="relative bg-white overflow-hidden shadow-xl rounded-sm" style={{ width: "324px", height: "204px" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                <span className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px] bg-slate-100 px-3 py-1 rounded-full">Front Preview</span>
+                <div className="relative bg-white overflow-hidden shadow-2xl rounded-sm ring-1 ring-slate-200/50" style={{ width: "324px", height: "204px" }}>
                   <img src="/id-front.jpg" alt="Front" className="absolute inset-0 w-full h-full object-cover z-0" />
-                  
                   <div className="absolute z-10 top-[42px] left-[190px] w-[110px]">
-                    <p className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}>
-                      {SNT(newStudent.fullName)}
-                    </p>
+                    <p className={`text-[13px] text-black m-0 leading-[1.15] font-extrabold tracking-tight break-words ${leagueSpartan.className}`}>{SNT(newStudent.fullName)}</p>
                   </div>
-
                   <div className="absolute z-10 top-[80px] left-[190px]">
-                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>
-                      {newStudent.gradeBatch}
-                    </p>
+                    <p className={`text-sm text-black m-0 leading-none font-extrabold tracking-tight ${leagueSpartan.className}`}>{newStudent.gradeBatch}</p>
                   </div>
-
                   <div className="absolute z-10 bottom-[35px] left-[95px]">
-                     <p className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}>
-                       {newStudent.shortId}
-                     </p>
+                     <p className={`text-sm tracking-[0.13em] text-black m-0 leading-none ${prata.className}`}>{newStudent.shortId}</p>
                   </div>
-
                   {qrDataUrl && (
-                    <div className="absolute z-10 top-[30px] left-[30px] w-[80px] h-[80px] bg-white p-1 rounded">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <div className="absolute z-10 top-[30px] left-[30px] w-[80px] h-[80px] bg-white p-1 rounded-sm shadow-sm">
                       <img src={qrDataUrl} alt="QR" className="w-full h-full object-contain" />
                     </div>
                   )}
@@ -188,66 +175,63 @@ export default function EnrollStudentForm() {
 
               {/* --- BACK CARD --- */}
               <div className="flex flex-col items-center gap-3">
-                <span className="text-yellow-600 font-bold tracking-widest text-sm">BACK PREVIEW (Variant {newStudent.variant})</span>
-                <div className="relative bg-white overflow-hidden shadow-xl rounded-sm" style={{ width: "324px", height: "204px" }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                <span className="text-amber-500 font-black uppercase tracking-[0.2em] text-[10px] bg-amber-50 border border-amber-100 px-3 py-1 rounded-full">Back Preview (Variant {newStudent.variant})</span>
+                <div className="relative bg-white overflow-hidden shadow-2xl rounded-sm ring-1 ring-slate-200/50" style={{ width: "324px", height: "204px" }}>
                   <img src={`/id-back-${newStudent.variant}.jpg`} alt="Back" className="absolute inset-0 w-full h-full object-cover z-0" />
                 </div>
               </div>
-
             </div>
 
-            {/* Modal Action Buttons */}
             <div className="flex w-full justify-center max-w-md">
               <button 
                 onClick={closePrintRoom}
-                className="w-full py-4 px-6 font-black text-white bg-slate-800 hover:bg-slate-900 rounded-xl transition-all shadow-lg hover:-translate-y-1"
+                className="w-full py-4 px-6 font-black text-white bg-slate-900 hover:bg-slate-800 rounded-2xl transition-all shadow-xl hover:-translate-y-1 active:scale-95"
               >
                 Done & Next Student
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* --- THE ADMISSION DESK FORM --- */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 w-full">
-        <h2 className="text-2xl font-bold text-slate-800 mb-6">New Admission</h2>
+      {/* --- THE UPGRADED ADMISSION DESK FORM --- */}
+      <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 w-full">
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl">✍️</div>
+          <h2 className="text-2xl font-black text-slate-800">New Admission</h2>
+        </div>
         
         <form onSubmit={handleEnrollment} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">Class Medium</label>
-            <div className="flex bg-slate-100 p-1 rounded-lg">
-              <button type="button" onClick={() => setMedium("E")} className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${medium === "E" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>English</button>
-              <button type="button" onClick={() => setMedium("T")} className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${medium === "T" ? "bg-white text-blue-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}>Tamil</button>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Class Medium</label>
+            <div className="flex bg-slate-50 p-1.5 rounded-xl border border-slate-100">
+              <button type="button" onClick={() => setMedium("E")} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${medium === "E" ? "bg-white text-indigo-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}>English</button>
+              <button type="button" onClick={() => setMedium("T")} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${medium === "T" ? "bg-white text-indigo-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"}`}>Tamil</button>
             </div>
           </div>
 
+          {/* Date of Enrollment - "Today" button removed and styling updated */}
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Date of Enrollment</label>
-            <div className="flex gap-2">
-              <input type="date" required className="flex-1 p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" value={enrollDate} onChange={(e) => setEnrollDate(e.target.value)} />
-              <button type="button" onClick={() => setEnrollDate(getTodayString())} className="px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors border border-slate-200 text-sm">Today</button>
-            </div>
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Date of Enrollment</label>
+            <input type="date" required className="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3 text-slate-800 font-bold outline-none transition-all" value={enrollDate} onChange={(e) => setEnrollDate(e.target.value)} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-            <input type="text" required className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="e.g. Bruce Wayne" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Full Name</label>
+            <input type="text" required className="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3 text-slate-800 font-bold outline-none transition-all placeholder:text-slate-300 placeholder:font-medium" placeholder="e.g. Bruce Wayne" value={fullName} onChange={(e) => setFullName(e.target.value)} />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Grade / Batch</label>
-            <input type="text" required className="w-full p-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="e.g. 10" value={gradeBatch} onChange={(e) => setGradeBatch(e.target.value)} />
+            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Grade / Batch</label>
+            <input type="text" required className="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3 text-slate-800 font-bold outline-none transition-all placeholder:text-slate-300 placeholder:font-medium" placeholder="e.g. 10" value={gradeBatch} onChange={(e) => setGradeBatch(e.target.value)} />
           </div>
 
-          <button type="submit" disabled={isSubmitting} className={`w-full p-3 text-white font-bold rounded-lg transition-all mt-2 ${isSubmitting ? "bg-blue-400 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700 shadow-md"}`}>
-            {isSubmitting ? "Enrolling..." : "Enroll Student"}
+          <button type="submit" disabled={isSubmitting} className={`w-full py-4 mt-4 text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${isSubmitting ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/25"}`}>
+            {isSubmitting ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "Enroll Student"}
           </button>
         </form>
 
-        {errorMsg && <div className="mt-4 p-3 rounded-lg text-sm text-center bg-red-50 text-red-700 border border-red-100">{errorMsg}</div>}
+        {errorMsg && <div className="mt-4 p-4 rounded-xl text-sm font-bold text-center bg-red-50 text-red-600 border border-red-100 animate-in fade-in">{errorMsg}</div>}
       </div>
     </>
   );

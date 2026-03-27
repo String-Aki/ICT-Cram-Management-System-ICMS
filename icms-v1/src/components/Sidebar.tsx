@@ -1,14 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Hide sidebar entirely on the Auth/Landing page and the Kiosk page
+  if (pathname === "/" || pathname === "/check-in") {
+    return null;
+  }
+
+  const handleSignOut = () => {
+    localStorage.removeItem("icms_admin_auth");
+    router.push("/");
+  };
 
   const navLinks = [
-    { name: "Dashboard", href: "/", icon: "📊" },
+    { name: "Dashboard", href: "/dashboard", icon: "📊" }, // Updated to /dashboard
     { name: "Enroll", href: "/enroll", icon: "📋" },
     { name: "Students Hub", href: "/students", icon: "🎓" },
     { name: "Attendance", href: "/attendance", icon: "✅" },
@@ -19,11 +36,12 @@ export default function Sidebar() {
     { name: "Achievements", href: "/achievements", icon: "⭐" },
   ];
 
+  if (!isMounted) return null;
+
   return (
     <nav className="bg-white border-r border-slate-200 w-full md:w-64 lg:w-72 flex-shrink-0 md:h-screen sticky top-0 flex flex-col z-50 print:hidden">
-      {/* --- LOGO HEADER --- */}
       <div className="p-6 md:p-8 flex items-center gap-4 border-b border-slate-100">
-        <div className="relative w-12 h-12 rounded-2xl border-2 border-blue-600  shadow-lg shadow-indigo-500/25 shrink-0 overflow-hidden">
+        <div className="relative w-12 h-12 rounded-2xl border-2 border-blue-600 shadow-lg shadow-indigo-500/25 shrink-0 overflow-hidden">
           <Image
             src="/icon.png"
             alt="ICMS Logo"
@@ -43,7 +61,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* --- NAVIGATION LINKS --- */}
       <div className="flex-1 overflow-y-auto scrollbar-hide p-4">
         <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 hidden md:block px-4">
           Management
@@ -53,7 +70,7 @@ export default function Sidebar() {
           {navLinks.map((link) => {
             const isActive =
               pathname === link.href ||
-              (pathname.startsWith(link.href) && link.href !== "/");
+              (pathname.startsWith(link.href) && link.href !== "/dashboard");
 
             return (
               <li key={link.name} className="flex-1 md:flex-none">
@@ -66,7 +83,7 @@ export default function Sidebar() {
                   }`}
                 >
                   <span
-                    className={`text-xl transition-transform ${isActive ? "scale-110" : "  group-hover:scale-110"}`}
+                    className={`text-xl transition-transform ${isActive ? "scale-110" : "group-hover:scale-110"}`}
                   >
                     {link.icon}
                   </span>
@@ -78,10 +95,9 @@ export default function Sidebar() {
         </ul>
       </div>
 
-      {/* --- FOOTER / LOGOUT BUTTON --- */}
       <div className="hidden md:block p-6 mt-auto border-t border-slate-100 bg-white">
         <button
-          onClick={() => alert("Supabase Auth & Sign Out coming in Phase 3!")}
+          onClick={handleSignOut}
           className="w-full flex items-center gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-200 hover:bg-red-50 hover:border-red-100 transition-all group text-left"
         >
           <div className="w-10 h-10 rounded-xl bg-slate-200 text-slate-500 group-hover:bg-red-100 group-hover:text-red-600 flex items-center justify-center font-black shrink-0 transition-colors">
