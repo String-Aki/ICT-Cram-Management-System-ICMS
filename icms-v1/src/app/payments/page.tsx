@@ -198,26 +198,34 @@ export default function PaymentHub() {
         </header>
 
         {/* FINANCIAL ANALYTICS ROW */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-emerald-50 flex items-center justify-center text-2xl border border-emerald-100">📈</div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-12 h-12 shrink-0 rounded-xl bg-emerald-50 flex items-center justify-center text-2xl border border-emerald-100">📈</div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">This Month's Revenue</span>
+            </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">This Month's Revenue</p>
-              <p className="text-3xl font-black text-emerald-600 font-mono mt-0.5">Rs {monthlyRevenue.toLocaleString()}</p>
+              <p className="text-3xl lg:text-4xl font-black text-emerald-600 font-mono tracking-tight">Rs {monthlyRevenue.toLocaleString()}</p>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-blue-50 flex items-center justify-center text-2xl border border-blue-100">🏦</div>
+          
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-12 h-12 shrink-0 rounded-xl bg-blue-50 flex items-center justify-center text-2xl border border-blue-100">🏦</div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">All-Time Revenue</span>
+            </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">All-Time Revenue</p>
-              <p className="text-3xl font-black text-slate-800 font-mono mt-0.5">Rs {totalRevenue.toLocaleString()}</p>
+              <p className="text-3xl lg:text-4xl font-black text-slate-800 font-mono tracking-tight">Rs {totalRevenue.toLocaleString()}</p>
             </div>
           </div>
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-5">
-            <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center text-2xl border border-red-100">⚠️</div>
+          
+          <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-12 h-12 shrink-0 rounded-xl bg-red-50 flex items-center justify-center text-2xl border border-red-100">⚠️</div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">Pending Collections</span>
+            </div>
             <div>
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Pending Collections</p>
-              <p className="text-3xl font-black text-red-600 font-mono mt-0.5">{dueStudents.length} Students</p>
+              <p className="text-3xl lg:text-4xl font-black text-red-600 font-mono tracking-tight">{dueStudents.length} Students</p>
             </div>
           </div>
         </div>
@@ -230,7 +238,7 @@ export default function PaymentHub() {
               <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-bold tracking-wider animate-pulse">{dueStudents.length} DUE</span>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
               {dueStudents.map((student) => (
                 <div key={student.id} className="bg-white p-5 rounded-2xl border border-red-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group flex flex-col justify-between">
                   <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>

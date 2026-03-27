@@ -196,9 +196,9 @@ export default function EnrollStudentForm() {
 
       {/* --- THE UPGRADED ADMISSION DESK FORM --- */}
       <div className="bg-white p-6 md:p-8 rounded-[2rem] shadow-sm border border-slate-200 w-full">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-xl">✍️</div>
-          <h2 className="text-2xl font-black text-slate-800">New Admission</h2>
+        <div className="flex items-center gap-4 mb-8">
+          <div className="w-12 h-12 shrink-0 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-2xl">✍️</div>
+          <h2 className="text-xl sm:text-2xl font-black text-slate-800 leading-tight tracking-tight">New Admission</h2>
         </div>
         
         <form onSubmit={handleEnrollment} className="space-y-5">

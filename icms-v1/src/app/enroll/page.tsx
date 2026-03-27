@@ -21,14 +21,14 @@ export default async function StudentsDirectory() {
         </header>
 
         {/* FIX: Changed back to items-start so the columns don't stretch each other */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 md:gap-8 items-start">
           
-          <section className="lg:col-span-1 w-full animate-in slide-in-from-bottom-8 fade-in duration-700">
+          <section className="xl:col-span-5 w-full max-w-md mx-auto xl:max-w-none xl:mx-0 animate-in slide-in-from-bottom-8 fade-in duration-700">
             <EnrollStudentForm />
           </section>
 
-          {/* FIX: Locked strict fixed height (h-[650px]) and forced overflow-hidden */}
-          <section className="lg:col-span-2 bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col h-[600px] overflow-hidden animate-in slide-in-from-bottom-8 fade-in duration-700 delay-100">
+          {/* FIX: Locked strict fixed height (h-[600px]) and forced overflow-hidden */}
+          <section className="xl:col-span-7 w-full max-w-3xl mx-auto xl:max-w-none xl:mx-0 bg-white rounded-[2rem] shadow-sm border border-slate-200 p-6 md:p-8 flex flex-col h-[600px] overflow-hidden animate-in slide-in-from-bottom-8 fade-in duration-700 delay-100">
             <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-indigo-500">🎓</span> Enrolled Students

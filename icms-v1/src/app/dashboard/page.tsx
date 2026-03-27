@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function MainDashboard() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true); // NEW
   const [stats, setStats] = useState({
@@ -20,16 +22,8 @@ export default function MainDashboard() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        window.location.href = "/";
-      } else {
-        setIsCheckingAuth(false);
-        fetchGlobalStats();
-      }
+      setIsCheckingAuth(false);
+      fetchGlobalStats();
     };
     checkSession();
   }, []);
@@ -157,7 +151,7 @@ export default function MainDashboard() {
             {(stats.pendingFees > 0 ||
               stats.pendingPrints > 0 ||
               stats.activeExams > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {stats.pendingFees > 0 && (
                   <Link
                     href="/payments"
@@ -233,18 +227,18 @@ export default function MainDashboard() {
             )}
 
             {/* --- PRIMARY KPI METRICS --- */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-2xl">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 md:gap-6">
+              <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-12 h-12 shrink-0 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center text-2xl">
                     👥
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
                     Active Roster
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-4xl font-black text-slate-800 font-mono">
+                  <h3 className="text-4xl font-black text-slate-800 font-mono tracking-tight">
                     {stats.activeStudents}
                   </h3>
                   <p className="text-sm font-bold text-slate-400 mt-1">
@@ -253,36 +247,36 @@ export default function MainDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-2xl">
+              <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-12 h-12 shrink-0 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center text-2xl">
                     📈
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
                     This Month
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-4xl font-black text-emerald-600 font-mono">
+                  <h3 className="text-3xl md:text-4xl font-black text-emerald-600 font-mono tracking-tight">
                     Rs {stats.monthlyRevenue.toLocaleString()}
                   </h3>
-                  <p className="text-sm font-bold text-slate-400 mt-1">
+                  <p className="text-sm font-bold text-slate-400 mt-1 truncate pr-2">
                     Rs {stats.totalRevenue.toLocaleString()} All-Time
                   </p>
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-2xl">
+              <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-12 h-12 shrink-0 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center text-2xl">
                     🏫
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
                     Today's Turnout
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-4xl font-black text-slate-800 font-mono">
+                  <h3 className="text-4xl font-black text-slate-800 font-mono tracking-tight">
                     {stats.todayAttendance}
                   </h3>
                   <p className="text-sm font-bold text-slate-400 mt-1">
@@ -291,17 +285,17 @@ export default function MainDashboard() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center text-2xl">
+              <div className="bg-white p-5 md:p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="flex items-center gap-4 mb-5">
+                  <div className="w-12 h-12 shrink-0 bg-orange-50 text-orange-600 rounded-xl flex items-center justify-center text-2xl">
                     🏆
                   </div>
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest leading-tight">
                     Gamification
                   </span>
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-800">
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">
                     System Active
                   </h3>
                   <p className="text-sm font-bold text-slate-400 mt-1">
@@ -316,7 +310,7 @@ export default function MainDashboard() {
               <h2 className="text-xl font-black text-slate-800 mb-6">
                 Management Hubs
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
                 <Link
                   href="/students"
                   className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-lg transition-all group hover:-translate-y-1"
