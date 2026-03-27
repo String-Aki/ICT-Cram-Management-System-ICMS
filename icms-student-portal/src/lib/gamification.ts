@@ -42,6 +42,7 @@ export function calculateRank(totalXp: number) {
     level: currentRankIndex + 1,
     rankName: currentRank.name,
     icon: currentRank.icon,
+    emoji: currentRank.emoji,
     progressPercentage,
     xpToNext,
     isMaxRank: !nextRank
