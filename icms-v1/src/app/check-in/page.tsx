@@ -91,7 +91,7 @@ export default function AttendanceKiosk() {
           href="/"
           className="inline-flex items-center gap-2 text-slate-500 hover:text-indigo-600 text-xs font-bold uppercase tracking-widest transition-colors bg-white px-4 py-2 rounded-full border border-slate-200 shadow-sm w-fit active:scale-95"
         >
-          <ArrowLeft className="w-4 h-4" /> Exit Kiosk
+          <ArrowLeft className="w-4 h-4" /> Exit Scanner
         </Link>
       </div>
 

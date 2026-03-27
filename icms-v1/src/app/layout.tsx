@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Sidebar from "@/components//Sidebar";
 import "./globals.css";
@@ -13,10 +13,28 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0a0f1c",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
-  title: "ICMS Admin",
+  title: "ICMS Terminal",
   description: "Tuition Center Management System",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "ICMS",
+    statusBarStyle: "black-translucent",
+  },
+  icons: {
+    icon: "/icon.png",
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

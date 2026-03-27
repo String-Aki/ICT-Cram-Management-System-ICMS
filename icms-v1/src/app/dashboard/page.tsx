@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 export default function MainDashboard() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true); // NEW
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [stats, setStats] = useState({
     activeStudents: 0,
     droppedStudents: 0,
@@ -22,8 +22,10 @@ export default function MainDashboard() {
 
   useEffect(() => {
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
       if (!session) {
         router.push("/");
       } else {
