@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GraduationCap, ArrowRight } from "lucide-react";
 
 export default function ExamVaultButton() {
   return (
@@ -11,13 +12,13 @@ export default function ExamVaultButton() {
       
       <div>
         <h2 className="font-black text-slate-800 text-xl flex items-center gap-2 mb-1 group-hover:text-cyan-700 transition-colors">
-          <span className="text-2xl">📊</span> Exam Results
+          <GraduationCap className="w-6 h-6 text-cyan-500" /> Exam Results
         </h2>
         <p className="text-sm font-medium text-slate-500 mb-6">Track your grades, test scores, and performance history.</p>
       </div>
 
       <div className="flex items-center text-xs font-bold text-cyan-600 uppercase tracking-widest gap-1 group-hover:gap-2 transition-all">
-        View Grades <span>→</span>
+        View Grades <ArrowRight className="w-4 h-4" />
       </div>
     </Link>
   );

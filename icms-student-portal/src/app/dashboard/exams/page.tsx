@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { GraduationCap, ArrowLeft, FileText, Zap } from "lucide-react";
 
 export default function ExamVaultPage() {
   const router = useRouter();
@@ -71,12 +72,12 @@ export default function ExamVaultPage() {
           href="/dashboard" 
           className="inline-flex items-center gap-2 text-cyan-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors mb-8 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md"
         >
-          <span>←</span> Back to Dashboard
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
         
         <div className="mb-12 animate-in slide-in-from-top-4 fade-in duration-500">
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg mb-2 flex items-center gap-4">
-            Exam Records
+            <GraduationCap className="w-10 h-10 text-cyan-500" /> Exam Records
           </h1>
           <p className="text-cyan-300 font-bold uppercase tracking-widest text-xs">
             Performance History
@@ -85,8 +86,8 @@ export default function ExamVaultPage() {
 
         {/* Results Grid */}
         {results.length === 0 ? (
-          <div className="text-center p-12 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md animate-in fade-in duration-700">
-            <span className="text-5xl mb-4 block grayscale opacity-30">📄</span>
+          <div className="text-center p-12 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md animate-in fade-in duration-700 flex flex-col items-center justify-center">
+            <FileText className="w-16 h-16 mb-4 text-slate-400 opacity-50" />
             <p className="font-bold text-slate-400">No exam records found.</p>
             <p className="text-sm text-slate-500 mt-2">Scores will appear here once tests are graded.</p>
           </div>
@@ -149,7 +150,7 @@ export default function ExamVaultPage() {
                       {/* XP Badge */}
                       {result.xp_awarded > 0 && (
                         <div className={`px-3 py-2 rounded-xl ring-1 ${ringColor} ${bgGlow} flex items-center gap-1.5`}>
-                          <span>✨</span>
+                          <Zap className={`w-3.5 h-3.5 ${scoreColor}`} />
                           <span className={`font-black text-sm ${scoreColor}`}>+{result.xp_awarded} XP</span>
                         </div>
                       )}
