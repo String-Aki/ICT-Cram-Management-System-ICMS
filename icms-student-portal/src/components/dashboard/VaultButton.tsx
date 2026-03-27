@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Library, ArrowRight } from "lucide-react";
 
 export default function VaultButton() {
   return (
@@ -11,13 +12,13 @@ export default function VaultButton() {
       
       <div>
         <h2 className="font-black text-slate-800 text-xl flex items-center gap-2 mb-1 group-hover:text-purple-700 transition-colors">
-          <span className="text-2xl">📚</span> Study Vault
+          <Library className="w-6 h-6 text-purple-500" /> Library
         </h2>
         <p className="text-sm font-medium text-slate-500 mb-6">Access your class notes, slides, and reference materials.</p>
       </div>
 
       <div className="flex items-center text-xs font-bold text-purple-600 uppercase tracking-widest gap-1 group-hover:gap-2 transition-all">
-        Open Vault <span>→</span>
+        Open Library <ArrowRight className="w-4 h-4" />
       </div>
     </Link>
   );

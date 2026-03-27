@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase";
+import { Library, ArrowLeft, Video, FileText, Link as LinkIcon, BookOpen, Inbox, ExternalLink } from "lucide-react";
 
-export default function StudyVaultPage() {
+export default function LibraryPage() {
   const router = useRouter();
   
   const [materials, setMaterials] = useState<any[]>([]);
@@ -42,7 +43,7 @@ export default function StudyVaultPage() {
         setMaterials(vaultItems || []);
 
       } catch (error) {
-        console.error("Error fetching vault materials:", error);
+        console.error("Error fetching library materials:", error);
       } finally {
         setIsLoading(false);
       }
@@ -55,18 +56,19 @@ export default function StudyVaultPage() {
     return (
       <div className="min-h-screen bg-[#0B1120] flex flex-col items-center justify-center p-4 space-y-4">
         <div className="w-16 h-16 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin"></div>
-        <p className="text-purple-400 font-bold uppercase tracking-widest text-xs animate-pulse">Unlocking Vault...</p>
+        <p className="text-purple-400 font-bold uppercase tracking-widest text-xs animate-pulse">Opening Library...</p>
       </div>
     );
   }
 
+  // Dynamically returns a Lucide vector based on the material type
   const getIconForType = (type: string) => {
     switch (type.toLowerCase()) {
-      case 'video': return '🎥';
-      case 'note': return '📝';
-      case 'pdf': return '📄';
-      case 'link': return '🔗';
-      default: return '📚';
+      case 'video': return <Video className="w-3 h-3" />;
+      case 'note': return <FileText className="w-3 h-3" />;
+      case 'pdf': return <FileText className="w-3 h-3" />;
+      case 'link': return <LinkIcon className="w-3 h-3" />;
+      default: return <BookOpen className="w-3 h-3" />;
     }
   };
 
@@ -83,23 +85,23 @@ export default function StudyVaultPage() {
           href="/dashboard" 
           className="inline-flex items-center gap-2 text-purple-400 hover:text-white text-xs font-bold uppercase tracking-widest transition-colors mb-8 bg-white/5 hover:bg-white/10 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md"
         >
-          <span>←</span> Back to Dashboard
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
         
         <div className="mb-12 animate-in slide-in-from-top-4 fade-in duration-500">
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight drop-shadow-lg mb-2 flex items-center gap-4">
-            Study Vault
+            <Library className="w-10 h-10 text-purple-500" /> Library
           </h1>
           <p className="text-purple-300 font-bold uppercase tracking-widest text-xs">
             {gradeBatch} Archives
           </p>
         </div>
 
-        {/* Vault Grid */}
+        {/* Library Grid */}
         {materials.length === 0 ? (
-          <div className="text-center p-12 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md animate-in fade-in duration-700">
-            <span className="text-5xl mb-4 block grayscale opacity-30">📭</span>
-            <p className="font-bold text-slate-400">The vault is currently empty.</p>
+          <div className="text-center p-12 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-md animate-in fade-in duration-700 flex flex-col items-center justify-center">
+            <Inbox className="w-16 h-16 mb-4 text-slate-400 opacity-50" />
+            <p className="font-bold text-slate-400">The library is currently empty.</p>
             <p className="text-sm text-slate-500 mt-2">New materials will appear here when uploaded by the academy.</p>
           </div>
         ) : (
@@ -112,10 +114,11 @@ export default function StudyVaultPage() {
               >
                 <div>
                   <div className="flex justify-between items-start mb-4">
-                    <span className="bg-purple-500/20 text-purple-300 font-black text-[10px] px-2 py-1 rounded-md uppercase tracking-widest border border-purple-500/20 flex items-center gap-1.5">
-                      <span>{getIconForType(item.type)}</span> {item.type}
+                    {/* Replaced emoji array with dynamic Lucide function */}
+                    <span className="bg-purple-500/20 text-purple-300 font-black text-[10px] px-2.5 py-1.5 rounded-lg uppercase tracking-widest border border-purple-500/20 flex items-center gap-1.5">
+                      {getIconForType(item.type)} {item.type}
                     </span>
-                    <span className="text-xs font-bold text-slate-500">
+                    <span className="text-xs font-bold text-slate-500 mt-1">
                       {new Date(item.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
@@ -138,7 +141,7 @@ export default function StudyVaultPage() {
                     rel="noopener noreferrer"
                     className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white font-black text-sm rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/20"
                   >
-                    Access Resource <span>→</span>
+                    Access Resource <ExternalLink className="w-4 h-4" />
                   </a>
                 )}
               </div>
