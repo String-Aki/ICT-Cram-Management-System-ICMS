@@ -35,6 +35,11 @@ export default function AttendanceHub() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
 
+  const getNowDate = () => new Date().toISOString().split("T")[0];
+  const getNowTime = () => new Date().toTimeString().slice(0, 5);
+  const [manualDate, setManualDate] = useState(getNowDate);
+  const [manualTime, setManualTime] = useState(getNowTime);
+
   useEffect(() => {
     fetchData();
   }, [viewMode, startDate, endDate]); // Refetch when mode or dates change
@@ -128,19 +133,21 @@ export default function AttendanceHub() {
       const student = activeStudents.find((s) => s.id === selectedStudentId);
       if (!student) throw new Error("Student not found");
 
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const timestamp = new Date().toISOString();
+      // Build a precise ISO timestamp from the admin-selected date + time
+      const timestamp = new Date(`${manualDate}T${manualTime}:00`).toISOString();
+      const dayStart = new Date(`${manualDate}T00:00:00`).toISOString();
+      const dayEnd = new Date(`${manualDate}T23:59:59`).toISOString();
 
       const { data: existing } = await supabase
         .from("attendance_logs")
         .select("id")
         .eq("student_id", student.id)
-        .gte("scanned_at", today.toISOString())
+        .gte("scanned_at", dayStart)
+        .lte("scanned_at", dayEnd)
         .single();
 
       if (existing) {
-        alert("This student is already checked in for today!");
+        alert(`This student is already checked in for ${manualDate}!`);
         setIsProcessing(false);
         return;
       }
@@ -171,6 +178,8 @@ export default function AttendanceHub() {
 
       setManualModal(false);
       setSelectedStudentId("");
+      setManualDate(getNowDate());
+      setManualTime(getNowTime());
       fetchData();
     } catch (err) {
       console.error("Manual check-in failed:", err);
@@ -225,6 +234,30 @@ export default function AttendanceHub() {
                     </option>
                   ))}
                 </select>
+              </div>
+
+              {/* Date & Time override */}
+              <div className="flex gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Date</label>
+                  <input
+                    type="date"
+                    required
+                    value={manualDate}
+                    onChange={(e) => setManualDate(e.target.value)}
+                    className="w-full p-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all font-bold text-slate-700"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-2">Time</label>
+                  <input
+                    type="time"
+                    required
+                    value={manualTime}
+                    onChange={(e) => setManualTime(e.target.value)}
+                    className="w-full p-3 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all font-mono font-bold text-slate-700"
+                  />
+                </div>
               </div>
 
               <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm font-medium text-blue-800">
