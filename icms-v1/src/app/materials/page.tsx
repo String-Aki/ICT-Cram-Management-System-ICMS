@@ -604,7 +604,7 @@ export default function MaterialsHub() {
                     key={item.id}
                     className={`${item.is_active ? "bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200" : "bg-slate-100 border-slate-200"} p-1 rounded-2xl shadow-sm hover:shadow-md transition-all group border`}
                   >
-                    <div className="bg-white p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="bg-white p-4 rounded-xl flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4">
                       <div>
                         <div className="flex items-center gap-2 mb-2">
                           <span
@@ -641,7 +641,7 @@ export default function MaterialsHub() {
                           )}
                         </p>
                       </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
+                      <div className="flex items-center gap-2 w-full xl:w-auto">
                         <a
                           href={item.resource_url}
                           target="_blank"
@@ -653,7 +653,7 @@ export default function MaterialsHub() {
                         </a>
                         <button
                           onClick={() => openGradingModal(item)}
-                          className={`flex-1 sm:flex-none px-4 py-2.5 text-white font-black rounded-xl transition-all whitespace-nowrap ${item.is_active ? "bg-amber-500 hover:bg-amber-400 shadow-md shadow-amber-500/20" : "bg-slate-800 hover:bg-slate-700 shadow-md shadow-slate-800/20"}`}
+                          className={`flex-1 xl:flex-none px-4 py-2.5 text-white font-black rounded-xl transition-all whitespace-nowrap ${item.is_active ? "bg-amber-500 hover:bg-amber-400 shadow-md shadow-amber-500/20" : "bg-slate-800 hover:bg-slate-700 shadow-md shadow-slate-800/20"}`}
                         >
                           {item.is_active
                             ? "Check Submissions"

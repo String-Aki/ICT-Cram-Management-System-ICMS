@@ -7,6 +7,7 @@ import SNT from "@/components/StudentNameTransformer";
 
 export default function PaymentHub() {
   const [dueStudents, setDueStudents] = useState<any[]>([]);
+  const [allStudents, setAllStudents] = useState<any[]>([]);
   const [ledger, setLedger] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -17,11 +18,19 @@ export default function PaymentHub() {
   // Search filter for the master ledger
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Modal State
+  // Cycle Payment Modal State
   const [paymentModal, setPaymentModal] = useState<any | null>(null);
-  const [amount, setAmount] = useState("2500"); 
+  const [amount, setAmount] = useState("2500");
   const [notes, setNotes] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Custom Fee Modal State
+  const [customFeeModal, setCustomFeeModal] = useState(false);
+  const [customFeeStudentId, setCustomFeeStudentId] = useState("");
+  const [customFeeLabel, setCustomFeeLabel] = useState("Admission Fee");
+  const [customFeeAmount, setCustomFeeAmount] = useState("500");
+  const [isCustomProcessing, setIsCustomProcessing] = useState(false);
+  const [customStudentSearch, setCustomStudentSearch] = useState("");
 
   useEffect(() => {
     fetchFinancials();
@@ -30,44 +39,86 @@ export default function PaymentHub() {
   const fetchFinancials = async () => {
     setIsLoading(true);
 
-    const { data: dueData } = await supabase
-      .from("students")
-      .select("id, full_name, grade_batch, qr_code, cycle_classes")
-      .eq("is_active", true)
-      .gte("cycle_classes", 8)
-      .order("cycle_classes", { ascending: false });
+    const [dueRes, allStudentsRes, ledgerRes] = await Promise.all([
+      supabase
+        .from("students")
+        .select("id, full_name, grade_batch, qr_code, cycle_classes")
+        .eq("is_active", true)
+        .gte("cycle_classes", 8)
+        .order("cycle_classes", { ascending: false }),
+      supabase
+        .from("students")
+        .select("id, full_name, grade_batch, qr_code")
+        .eq("is_active", true)
+        .order("full_name", { ascending: true }),
+      supabase
+        .from("payments")
+        .select(`id, amount, paid_at, notes, student:student_id ( full_name, grade_batch, qr_code )`)
+        .order("paid_at", { ascending: false }),
+    ]);
 
-    if (dueData) setDueStudents(dueData);
+    if (dueRes.data) setDueStudents(dueRes.data);
+    if (allStudentsRes.data) setAllStudents(allStudentsRes.data);
 
-    const { data: ledgerData } = await supabase
-      .from("payments")
-      .select(`
-        id, amount, paid_at, notes,
-        student:student_id ( full_name, grade_batch, qr_code )
-      `)
-      .order("paid_at", { ascending: false });
-
-    if (ledgerData) {
-      setLedger(ledgerData);
-
-      const currentMonthString = new Date().toISOString().slice(0, 7); 
-      
+    if (ledgerRes.data) {
+      setLedger(ledgerRes.data);
+      const currentMonthString = new Date().toISOString().slice(0, 7);
       let total = 0;
       let monthly = 0;
-
-      ledgerData.forEach((payment) => {
+      ledgerRes.data.forEach((payment) => {
         const amt = Number(payment.amount) || 0;
         total += amt;
-        if (payment.paid_at.startsWith(currentMonthString)) {
-          monthly += amt;
-        }
+        if (payment.paid_at.startsWith(currentMonthString)) monthly += amt;
       });
-
       setTotalRevenue(total);
       setMonthlyRevenue(monthly);
     }
 
     setIsLoading(false);
+  };
+
+  const processCustomFee = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customFeeStudentId) return;
+    setIsCustomProcessing(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const student = allStudents.find(s => s.id === customFeeStudentId);
+
+      const { data: generatedPayment, error: insertError } = await supabase
+        .from("payments")
+        .insert([{
+          student_id: customFeeStudentId,
+          amount: parseFloat(customFeeAmount),
+          payment_month: today,
+          notes: customFeeLabel || "Custom Fee",
+        }])
+        .select("id")
+        .single();
+
+      if (insertError) throw insertError;
+
+      // Fire receipt push notification to the student
+      if (student) {
+        dispatchNativePush({
+          title: "💳 Payment Received!",
+          body: `Rs ${parseFloat(customFeeAmount).toLocaleString()} collected for "${customFeeLabel}". Tap to view your receipt! 🧾`,
+          url: generatedPayment ? `/dashboard/payments?receipt=${generatedPayment.id}` : "/dashboard/payments"
+        }, { studentIds: [customFeeStudentId] });
+      }
+
+      setCustomFeeModal(false);
+      setCustomFeeStudentId("");
+      setCustomFeeLabel("Admission Fee");
+      setCustomFeeAmount("500");
+      setCustomStudentSearch("");
+      fetchFinancials();
+    } catch (err: any) {
+      console.error("Custom fee failed:", err);
+      alert("Failed to process. Check console.");
+    } finally {
+      setIsCustomProcessing(false);
+    }
   };
 
   const processPayment = async (e: React.FormEvent) => {
@@ -126,6 +177,98 @@ export default function PaymentHub() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
       
+      {/* --- CUSTOM FEE MODAL --- */}
+      {customFeeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl p-8 w-full max-w-md border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black text-slate-800">Add Custom Fee</h2>
+                <p className="text-sm font-bold text-slate-500 mt-1">Log a one-off charge for any student.</p>
+              </div>
+              <div className="text-4xl">🧾</div>
+            </div>
+
+            <form onSubmit={processCustomFee} className="space-y-5">
+              {/* Student Selector with Live Search */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Select Student</label>
+                <input
+                  type="text"
+                  placeholder="Search by name or ID..."
+                  value={customStudentSearch}
+                  onChange={e => setCustomStudentSearch(e.target.value)}
+                  className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-medium mb-2"
+                />
+                <div className="max-h-40 overflow-y-auto space-y-1.5 custom-scrollbar pr-1">
+                  {allStudents
+                    .filter(s =>
+                      (s.full_name?.toLowerCase() || "").includes(customStudentSearch.toLowerCase()) ||
+                      (s.qr_code?.toLowerCase() || "").includes(customStudentSearch.toLowerCase())
+                    )
+                    .map(s => (
+                      <div
+                        key={s.id}
+                        onClick={() => setCustomFeeStudentId(s.id)}
+                        className={`flex items-center justify-between p-3 rounded-xl cursor-pointer border transition-all ${
+                          customFeeStudentId === s.id
+                            ? "bg-blue-50 border-blue-400 shadow-sm"
+                            : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                        }`}
+                      >
+                        <div>
+                          <p className="font-bold text-slate-800 text-sm">{SNT(s.full_name)}</p>
+                          <p className="text-xs text-slate-400 font-mono">{s.qr_code} · Grade {s.grade_batch}</p>
+                        </div>
+                        {customFeeStudentId === s.id && <span className="text-blue-500 font-black text-lg">✓</span>}
+                      </div>
+                    ))
+                  }
+                </div>
+              </div>
+
+              {/* Fee Label */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Fee Label / Description</label>
+                <input
+                  type="text"
+                  required
+                  value={customFeeLabel}
+                  onChange={e => setCustomFeeLabel(e.target.value)}
+                  placeholder="e.g. Admission Fee, Material Kit..."
+                  className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-medium"
+                />
+              </div>
+
+              {/* Fee Amount */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">Amount (LKR)</label>
+                <input
+                  type="number"
+                  required
+                  value={customFeeAmount}
+                  onChange={e => setCustomFeeAmount(e.target.value)}
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 outline-none transition-all text-xl font-black text-slate-800 font-mono"
+                />
+              </div>
+
+              {!customFeeStudentId && (
+                <p className="text-xs font-bold text-amber-600 bg-amber-50 border border-amber-100 px-3 py-2 rounded-lg">⚠️ Please select a student above to proceed.</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => { setCustomFeeModal(false); setCustomFeeStudentId(""); setCustomStudentSearch(""); }} className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={isCustomProcessing || !customFeeStudentId} className="flex-1 py-3 px-4 bg-emerald-600 text-white font-black rounded-xl hover:bg-emerald-500 shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-40">
+                  {isCustomProcessing ? "Processing..." : "Collect & Log"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* --- PAYMENT MODAL --- */}
       {paymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -200,9 +343,17 @@ export default function PaymentHub() {
               <p className="text-slate-500 font-medium mt-1">Manage cycle billing, track revenue, and view transaction history.</p>
             </div>
           </div>
-          <button onClick={fetchFinancials} className="px-5 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
-            ↻ Sync Financials
-          </button>
+          <div className="flex gap-3 w-full xl:w-auto">
+            <button
+              onClick={() => { setCustomFeeModal(true); setCustomFeeStudentId(""); setCustomStudentSearch(""); }}
+              className="flex-1 xl:flex-none px-5 py-3 bg-slate-800 text-white font-black rounded-xl hover:bg-slate-700 transition-all shadow-md"
+            >
+              + Add Custom Fee
+            </button>
+            <button onClick={fetchFinancials} className="px-5 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-colors">
+              ↻ Sync
+            </button>
+          </div>
         </header>
 
         {/* FINANCIAL ANALYTICS ROW */}

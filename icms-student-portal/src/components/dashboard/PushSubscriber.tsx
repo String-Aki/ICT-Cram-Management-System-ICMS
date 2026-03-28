@@ -46,6 +46,8 @@ export default function PushSubscriber() {
 
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
       
+      // Explicitly register the Service Worker to avoid deadlocking on Android Chrome
+      await navigator.serviceWorker.register('/sw.js');
       const registration = await navigator.serviceWorker.ready;
       
       // Request permission natively (Requires active User Gesture on iOS)

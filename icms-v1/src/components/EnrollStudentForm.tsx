@@ -43,6 +43,10 @@ export default function EnrollStudentForm() {
   const [gradeBatch, setGradeBatch] = useState("");
   const [medium, setMedium] = useState<"E" | "T">("E");
 
+  const [isAdmissionFeeApplied, setIsAdmissionFeeApplied] = useState(true);
+  const [admissionFeeAmount, setAdmissionFeeAmount] = useState("500");
+  const [admissionFeeStatus, setAdmissionFeeStatus] = useState<"paid" | "unpaid">("paid");
+
   const getTodayString = () => new Date().toISOString().split("T")[0];
   const [enrollDate, setEnrollDate] = useState(getTodayString());
 
@@ -96,6 +100,21 @@ export default function EnrollStudentForm() {
           .insert([{ student_id: studentData.id }]);
         
         if (queueError) console.error("Failed to queue card:", queueError);
+
+        if (isAdmissionFeeApplied && admissionFeeStatus === "paid") {
+          const amountParsed = parseFloat(admissionFeeAmount);
+          if (amountParsed > 0) {
+            const { error: payError } = await supabase
+              .from("payments")
+              .insert([{
+                student_id: studentData.id,
+                amount: amountParsed,
+                payment_month: enrollDate,
+                notes: "Admission Fee"
+              }]);
+            if (payError) console.error("Failed to record admission fee:", payError);
+          }
+        }
       }
 
       const qrImage = await QRCode.toDataURL(finalShortId, { margin: 0, width: 200 });
@@ -224,6 +243,43 @@ export default function EnrollStudentForm() {
           <div>
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Grade / Batch</label>
             <input type="text" required className="w-full bg-white border-2 border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3 text-slate-800 font-bold outline-none transition-all placeholder:text-slate-300 placeholder:font-medium" placeholder="e.g. 10" value={gradeBatch} onChange={(e) => setGradeBatch(e.target.value)} />
+          </div>
+
+          {/* ADMISSION FEE BLOCK */}
+          <div className="pt-4 border-t border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+               <div>
+                 <span className="text-sm font-black text-slate-800 block">Admission Fee</span>
+                 <p className="text-[11px] text-slate-500 font-bold mt-0.5 uppercase tracking-widest">Initial Enrollment Charge</p>
+               </div>
+               <button type="button" onClick={() => setIsAdmissionFeeApplied(!isAdmissionFeeApplied)} className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isAdmissionFeeApplied ? 'bg-indigo-600' : 'bg-slate-200'}`}>
+                 <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isAdmissionFeeApplied ? 'translate-x-5' : 'translate-x-0'}`} />
+               </button>
+            </div>
+            
+            {isAdmissionFeeApplied && (
+              <div className="bg-indigo-50/50 border border-indigo-100 p-4 rounded-xl space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                 <div className="flex bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+                   <button type="button" onClick={() => setAdmissionFeeStatus("paid")} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${admissionFeeStatus === "paid" ? "bg-emerald-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>Paid Now</button>
+                   <button type="button" onClick={() => setAdmissionFeeStatus("unpaid")} className={`flex-1 py-2 text-xs font-bold rounded-md transition-all ${admissionFeeStatus === "unpaid" ? "bg-red-500 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}>Unpaid (Save purely to file)</button>
+                 </div>
+                 
+                 <div>
+                    <label className="block text-[11px] font-black text-indigo-800/60 uppercase tracking-widest mb-1.5 ml-1">Fee Amount (LKR)</label>
+                    <input type="number" required={isAdmissionFeeApplied} value={admissionFeeAmount} onChange={e => setAdmissionFeeAmount(e.target.value)} className="w-full bg-white border-2 border-indigo-100 focus:border-indigo-400 focus:ring-4 focus:ring-indigo-100 rounded-lg px-3 py-3 text-slate-800 font-black text-base outline-none transition-all shadow-sm" />
+                 </div>
+                 
+                 {admissionFeeStatus === "paid" ? (
+                   <div className="flex items-center gap-2 text-[10px] font-black text-emerald-600 bg-emerald-50 border border-emerald-100 px-3 py-2 rounded-lg">
+                      <span className="text-sm">✓</span> A receipt will be instantly generated to the student's ledger.
+                   </div>
+                 ) : (
+                   <div className="flex items-center gap-2 text-[10px] font-black text-red-600 bg-red-50 border border-red-100 px-3 py-2 rounded-lg">
+                      <span className="text-sm">⏳</span> Pending. Collect later using the "Add Custom Fee" tool in the Financials Hub.
+                   </div>
+                 )}
+              </div>
+            )}
           </div>
 
           <button type="submit" disabled={isSubmitting} className={`w-full py-4 mt-4 text-white font-black rounded-xl transition-all shadow-lg active:scale-95 flex items-center justify-center gap-2 ${isSubmitting ? "bg-indigo-400 cursor-not-allowed" : "bg-indigo-600 hover:bg-indigo-500 hover:shadow-indigo-500/25"}`}>
