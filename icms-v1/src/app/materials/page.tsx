@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { dispatchNativePush } from "@/lib/push";
 import SNT from "@/components/StudentNameTransformer";
 
 export default function MaterialsHub() {
@@ -14,6 +15,7 @@ export default function MaterialsHub() {
   const [isAdding, setIsAdding] = useState(false);
   const [newType, setNewType] = useState<"material" | "homework">("material");
   const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newGrade, setNewGrade] = useState("");
   const [newXp, setNewXp] = useState(50);
@@ -67,8 +69,9 @@ export default function MaterialsHub() {
       const { error } = await supabase.from("class_materials").insert([
         {
           title: newTitle,
+          description: newType === "homework" ? newDescription : null,
           type: newType,
-          resource_url: newUrl,
+          resource_url: newUrl || null,
           grade_batch: newGrade,
           xp_reward: newType === "homework" ? newXp : 0,
           deadline: newType === "homework" && newDeadline ? newDeadline : null,
@@ -78,8 +81,24 @@ export default function MaterialsHub() {
 
       if (error) throw error;
 
+      // Broadcast Push Notification silently to the exact Grade
+      const targets = newGrade === "All" ? undefined : { gradeBatches: [newGrade] };
+      const bodyText = newType === "homework"
+        ? `"${newTitle}" has just dropped! Check it out and grab that XP! 🚀`
+        : `"${newTitle}" has been uploaded. Tap to review your new study notes! 📘`;
+
+      dispatchNativePush(
+        {
+          title: newType === "homework" ? "⭐ New Homework Quest!" : "📘 Fresh Study Material!",
+          body: bodyText,
+          url: newType === "homework" ? "/dashboard/quests" : "/dashboard"
+        },
+        targets
+      );
+
       setIsAdding(false);
       setNewTitle("");
+      setNewDescription("");
       setNewUrl("");
       setNewGrade("");
       setNewDeadline("");
@@ -288,23 +307,38 @@ export default function MaterialsHub() {
               </div>
 
               {newType === "homework" && (
-                <div>
-                  <label className="block text-sm font-bold text-red-500 mb-1">
-                    Deadline Date
-                  </label>
-                  <input
-                    required
-                    type="date"
-                    value={newDeadline}
-                    onChange={(e) => setNewDeadline(e.target.value)}
-                    className="w-full p-3 border-2 border-red-200 bg-red-50 text-red-800 rounded-xl outline-none focus:border-red-500 font-bold"
-                  />
-                </div>
+                <>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1">
+                      Quest Description (Instructions)
+                    </label>
+                    <textarea
+                      required
+                      rows={3}
+                      value={newDescription}
+                      onChange={(e) => setNewDescription(e.target.value)}
+                      placeholder="e.g. Complete exercises 1-10 on page 42 and submit via the link below."
+                      className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-medium custom-scrollbar"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-red-500 mb-1">
+                      Deadline Date
+                    </label>
+                    <input
+                      required
+                      type="date"
+                      value={newDeadline}
+                      onChange={(e) => setNewDeadline(e.target.value)}
+                      className="w-full p-3 border-2 border-red-200 bg-red-50 text-red-800 rounded-xl outline-none focus:border-red-500 font-bold"
+                    />
+                  </div>
+                </>
               )}
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">
-                  Resource Link (Google Drive, PDF, etc)
+                  Resource Link (Optional: Google Drive, PDF, etc)
                 </label>
                 <input
                   type="url"

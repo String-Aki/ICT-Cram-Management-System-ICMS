@@ -256,7 +256,7 @@ export default function AttendanceHub() {
 
       <div className="max-w-7xl mx-auto space-y-8">
         {/* HEADER */}
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
+        <header className="flex flex-col xl:flex-row justify-between items-start xl:items-center gap-6 bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center text-3xl shadow-inner border border-blue-100">
               ✅
@@ -287,7 +287,7 @@ export default function AttendanceHub() {
         </header>
 
         {/* ANALYTICS ROW */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center gap-5 relative overflow-hidden">
             <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-50 rounded-bl-full -z-0 opacity-50"></div>
             <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center text-2xl border border-indigo-100 relative z-10 shrink-0">
@@ -372,7 +372,7 @@ export default function AttendanceHub() {
 
         {/* DATA TABLE */}
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-50">
+          <div className="p-6 md:p-8 border-b border-slate-100 flex flex-col xl:flex-row justify-between items-start xl:items-center gap-4 bg-slate-50">
             <div>
               <h3 className="text-xl font-black text-slate-800">
                 {viewMode === "today"

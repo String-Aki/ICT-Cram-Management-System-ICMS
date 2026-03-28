@@ -18,6 +18,7 @@ import PaymentsButton from "@/components/dashboard/PaymentsButton";
 import AchievementsButton from "@/components/dashboard/AchievementsButton";
 import XpLedgerButton from "@/components/dashboard/XpLedgerButton";
 import SettingsButton from "@/components/dashboard/SettingsButton";
+import PushSubscriber from "@/components/dashboard/PushSubscriber";
 
 export default function StudentDashboard() {
   const router = useRouter();
@@ -113,6 +114,7 @@ export default function StudentDashboard() {
       </div>
 
       <div className="relative z-10">
+        <PushSubscriber />
         <TopNav studentName={student.full_name} />
 
         <main className="p-4 md:p-8 max-w-4xl mx-auto space-y-5">

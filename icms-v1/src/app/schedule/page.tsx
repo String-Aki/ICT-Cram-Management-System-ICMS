@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase"; 
+import { dispatchNativePush } from "@/lib/push";
 import { CalendarDays, AlertTriangle, Users, BookOpen, Clock, Trash2, CheckSquare, Square } from "lucide-react";
 
 const DAYS_OF_WEEK = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -81,6 +82,16 @@ export default function UnifiedScheduleManager() {
 
     const { error } = await supabase.from("schedules").insert([payload]);
     if (!error) {
+      // Fire Push Dispatch explicitly to the targeted grades or targeted internal students
+      dispatchNativePush({
+        title: "📅 New Class Schedule!",
+        body: `Heads up! "${payload.title}" has been added to your academic calendar. Get ready! 🚀`,
+        url: "/dashboard/schedule"
+      }, {
+        studentIds: payload.target_students,
+        gradeBatches: payload.target_grades
+      });
+      
       setTitle(""); setSpecificDate(""); setTargetGrades([]); setTargetStudents([]);
       fetchData();
     } else alert("Failed to save schedule.");
@@ -108,6 +119,19 @@ export default function UnifiedScheduleManager() {
 
     const { error } = await supabase.from("schedules").insert([payload]);
     if (!error) {
+      // Broadcast emergency reschedules strictly to whatever bounds the parent class established
+      const overrideLabel = overrideAction === "cancel" ? "Class Cancelled" : "Class Rescheduled";
+      const overrideReason = overrideAction === "cancel" ? `Your class "${parent.title}" for ${overrideDate} has been cancelled! 🛑` : `Your class "${parent.title}" has been moved to ${overrideStart} on ${overrideDate}. Stay sharp! ⚡`;
+      
+      dispatchNativePush({
+         title: `⚠️ ${overrideLabel}`,
+         body: overrideReason,
+         url: "/dashboard/schedule"
+      }, {
+         studentIds: parent.target_students,
+         gradeBatches: parent.target_grades
+      });
+
       setParentScheduleId(""); setOverrideDate("");
       fetchData();
       setActiveTab("base");
@@ -139,10 +163,10 @@ export default function UnifiedScheduleManager() {
         <p className="text-slate-500 font-medium mt-1">Configure global, grade-specific, or student-specific events.</p>
       </header>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 relative z-10">
         
         {/* LEFT COLUMN: CREATION PANEL */}
-        <div className="lg:col-span-4 space-y-4">
+        <div className="xl:col-span-4 space-y-4">
           <div className="flex rounded-xl bg-slate-200/50 p-1 backdrop-blur-sm border border-slate-200">
             <button 
               onClick={() => setActiveTab("base")}
@@ -297,7 +321,7 @@ export default function UnifiedScheduleManager() {
         </div>
 
         {/* RIGHT COLUMN: LIST VIEW */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className="xl:col-span-8 space-y-4">
            {isLoading && <div className="text-slate-400 text-sm font-bold text-center mt-10">Syncing Master Schedule...</div>}
            
            {!isLoading && baseSchedules.length === 0 && (

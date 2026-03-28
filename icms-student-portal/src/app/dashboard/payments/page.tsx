@@ -46,6 +46,15 @@ export default function PaymentsPage() {
 
         if (paymentError) throw paymentError;
         setPayments(paymentData || []);
+
+        // Deeplink Hydration for Push Notifications
+        const params = new URLSearchParams(window.location.search);
+        const receiptParam = params.get("receipt");
+        if (receiptParam && paymentData) {
+          const matchingReceipt = paymentData.find(p => p.id === receiptParam);
+          if (matchingReceipt) setSelectedReceipt(matchingReceipt);
+        }
+
       } catch (error) {
         console.error("Error fetching payments:", error);
       } finally {

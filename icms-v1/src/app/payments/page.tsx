@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { dispatchNativePush } from "@/lib/push";
 import SNT from "@/components/StudentNameTransformer";
 
 export default function PaymentHub() {
@@ -76,12 +77,12 @@ export default function PaymentHub() {
     try {
       const today = new Date().toISOString().split("T")[0];
       
-      const { error: insertError } = await supabase.from("payments").insert([{
+      const { data: generatedPayment, error: insertError } = await supabase.from("payments").insert([{
         student_id: paymentModal.id,
         amount: parseFloat(amount),
         payment_month: today,
         notes: notes || "Cycle Payment"
-      }]);
+      }]).select("id").single();
 
       if (insertError) throw insertError;
 
@@ -93,6 +94,13 @@ export default function PaymentHub() {
         .eq("id", paymentModal.id);
 
       if (updateError) throw updateError;
+
+      // Broadcast receipt natively to the student's PWA
+      dispatchNativePush({
+        title: "💳 Payment Processed!",
+        body: `We just secured your payment of Rs ${parseFloat(amount).toLocaleString()}. Tap here to view the official receipt! ✨`,
+        url: generatedPayment ? `/dashboard/payments?receipt=${generatedPayment.id}` : "/dashboard/payments"
+      }, { studentIds: [paymentModal.id] });
 
       setPaymentModal(null);
       setNotes("");

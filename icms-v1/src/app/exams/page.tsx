@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { dispatchNativePush } from "@/lib/push";
 import SNT from "@/components/StudentNameTransformer";
 
 export default function ExamsHub() {
@@ -201,6 +202,13 @@ export default function ExamsHub() {
       });
 
       await Promise.all(promises);
+
+      const affectedIds = studentsToGrade.map(s => s.id);
+      dispatchNativePush({
+        title: `🎯 Exam Results Posted!`,
+        body: `Scores for ${gradingExam.title} are now officially live. Check your grades and newly awarded XP! ✨`,
+        url: "/dashboard" // Or wherever they see it
+      }, { studentIds: affectedIds });
 
       await openGradingModal(gradingExam);
       alert("✅ Grades Published Successfully!");

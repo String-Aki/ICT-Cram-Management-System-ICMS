@@ -7,8 +7,7 @@ self.addEventListener("install", (event) => {
       // Just aggressively cache the top-level icons and offline state if necessary.
       // We don't want to heavily cache Next.js App Router dynamic routes because they break easily.
       return cache.addAll([
-        "/icon.png",
-        "/icon-512.png"
+        "/icon.png"
       ]);
     })
   );
@@ -45,5 +44,39 @@ self.addEventListener("fetch", (event) => {
          // If offline, fallback to the cache (this satisfies Chrome's installation criteria!)
          return caches.match(event.request);
       })
+  );
+});
+
+// Push Notification Reception Engine
+self.addEventListener("push", (event) => {
+  if (event.data) {
+    const data = event.data.json();
+    const options = {
+      body: data.body,
+      icon: "/icon.png",
+      badge: "/icon.png",
+      data: { url: data.url || "/" }
+    };
+    event.waitUntil(self.registration.showNotification(data.title, options));
+  }
+});
+
+// Handle user clicking the frozen banner
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((windowClients) => {
+      for (let i = 0; i < windowClients.length; i++) {
+        const client = windowClients[i];
+        if (client.url === urlToOpen && "focus" in client) {
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(urlToOpen);
+      }
+    })
   );
 });
