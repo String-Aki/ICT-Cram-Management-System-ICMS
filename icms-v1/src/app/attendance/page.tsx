@@ -47,71 +47,98 @@ export default function AttendanceHub() {
   const fetchData = async () => {
     setIsLoading(true);
 
-    // 1. Fetch active students to calculate totals and cohort stats
+    // 1. Fetch all active students
     const { data: studentsData } = await supabase
       .from("students")
       .select("id, full_name, grade_batch, qr_code, total_xp, cycle_classes")
       .eq("is_active", true)
       .order("full_name", { ascending: true });
 
-    let studentsList = studentsData || [];
+    const studentsList = studentsData || [];
     setActiveStudents(studentsList);
     setTotalActive(studentsList.length);
 
-    // Setup base cohort totals
+    // 2. Fetch today's active schedules to compute EXPECTED headcount
+    const todayDate = new Date();
+    const todayDayOfWeek = todayDate.getDay();
+    const todayStr = todayDate.toISOString().split("T")[0];
+
+    const { data: todaySchedules } = await supabase
+      .from("schedules")
+      .select("target_grades, target_students, schedule_type, day_of_week, specific_date, is_active")
+      .eq("is_active", true)
+      .in("schedule_type", ["recurring", "one_time"]);
+
+    // Union of all student IDs expected today across all applicable sessions
+    const expectedStudentIds = new Set<string>();
+
+    (todaySchedules || []).forEach(sch => {
+      const isToday =
+        (sch.schedule_type === "recurring" && sch.day_of_week === todayDayOfWeek) ||
+        (sch.schedule_type === "one_time" && sch.specific_date === todayStr);
+
+      if (!isToday) return;
+
+      const isGlobal = (sch.target_grades?.length ?? 0) === 0 && (sch.target_students?.length ?? 0) === 0;
+
+      if (isGlobal) {
+        // All active students are expected
+        studentsList.forEach(s => expectedStudentIds.add(s.id));
+      } else {
+        // Grade-targeted students
+        (sch.target_grades || []).forEach((grade: string) => {
+          studentsList.filter(s => s.grade_batch === grade).forEach(s => expectedStudentIds.add(s.id));
+        });
+        // Individually targeted students
+        (sch.target_students || []).forEach((id: string) => expectedStudentIds.add(id));
+      }
+    });
+
+    // Build cohort totals from EXPECTED students only (falls back to all if no sessions today)
+    const expectedList = expectedStudentIds.size > 0
+      ? studentsList.filter(s => expectedStudentIds.has(s.id))
+      : studentsList;
+
+    setTotalActive(expectedList.length); // repurpose totalActive to reflect expected count
+
     const stats: Record<string, { present: number; total: number }> = {};
-    studentsList.forEach((s) => {
+    expectedList.forEach((s) => {
       const grade = s.grade_batch || "Unknown";
       if (!stats[grade]) stats[grade] = { present: 0, total: 0 };
       stats[grade].total += 1;
     });
 
-    // 2. Build the Attendance Query
+    // 3. Build the Attendance Query
     let query = supabase
       .from("attendance_logs")
-      .select(
-        `
-        id, scanned_at, status, student_id,
-        student:student_id ( full_name, grade_batch, qr_code )
-      `,
-      )
+      .select(`id, scanned_at, status, student_id, student:student_id ( full_name, grade_batch, qr_code )`)
       .order("scanned_at", { ascending: false });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     if (viewMode === "today") {
-      // ONLY fetch today's logs
       query = query.gte("scanned_at", today.toISOString());
     } else {
-      // Fetch based on Date Range Picker
       const start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
       const end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      query = query
-        .gte("scanned_at", start.toISOString())
-        .lte("scanned_at", end.toISOString());
+      query = query.gte("scanned_at", start.toISOString()).lte("scanned_at", end.toISOString());
     }
 
-    const { data: logsData, error } = await query;
+    const { data: logsData } = await query;
 
     if (logsData) {
       setLogs(logsData);
 
-      // Calculate Today's Stats (Even if viewing history, we want the top cards to remain accurate for "Today")
-      const todaysLogs =
-        viewMode === "today"
-          ? logsData
-          : logsData.filter((log) => new Date(log.scanned_at) >= today);
+      const todaysLogs = viewMode === "today"
+        ? logsData
+        : logsData.filter((log) => new Date(log.scanned_at) >= today);
 
-      // Get unique students who scanned today
-      const uniqueStudentIdsToday = new Set(
-        todaysLogs.map((log) => log.student_id),
-      );
+      const uniqueStudentIdsToday = new Set(todaysLogs.map((log) => log.student_id));
       setTodayCount(uniqueStudentIdsToday.size);
 
-      // Populate 'present' counts for cohorts
       uniqueStudentIdsToday.forEach((id) => {
         const student = studentsList.find((s) => s.id === id);
         if (student && stats[student.grade_batch]) {
@@ -123,6 +150,7 @@ export default function AttendanceHub() {
 
     setIsLoading(false);
   };
+
 
   const handleManualCheckIn = async (e: React.FormEvent) => {
     e.preventDefault();
