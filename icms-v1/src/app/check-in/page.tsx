@@ -30,38 +30,112 @@ export default function AttendanceKiosk() {
       const dayOfWeek = today.getDay();
 
       try {
-        const { data: exception } = await supabase
-          .from("schedule_exceptions")
+        // Fetch all active schedules from the current schedules table
+        const { data: allSchedules, error } = await supabase
+          .from("schedules")
           .select("*")
-          .eq("exception_date", localDateStr)
-          .single();
+          .eq("is_active", true);
 
-        if (exception) {
-          setClassStartTime(exception.new_start_time);
-          setClassEndTime(exception.new_end_time);
-          setScheduleType("override");
-          setScheduleNote(exception.note || "Emergency Override Active");
+        if (error) throw error;
+        if (!allSchedules || allSchedules.length === 0) {
+          setClassStartTime(null);
+          setScheduleType("none");
+          setScheduleNote("No class today");
           return;
         }
 
-        const { data: regular } = await supabase
-          .from("weekly_schedule")
-          .select("*")
-          .eq("day_of_week", dayOfWeek)
-          .eq("is_active", true)
-          .single();
+        // Find base classes for today: recurring matching day_of_week OR one_time matching today's date
+        const baseToday = allSchedules.filter(s =>
+          (s.schedule_type === "recurring" && s.day_of_week === dayOfWeek) ||
+          (s.schedule_type === "one_time" && s.specific_date === localDateStr)
+        );
 
-        if (regular) {
-          setClassStartTime(regular.start_time);
-          setClassEndTime(regular.end_time);
-          setScheduleType("regular");
-          setScheduleNote("Running on regular schedule");
+        if (baseToday.length === 0) {
+          // Also check if a cross-day reschedule override lands today
+          const rescheduleOverride = allSchedules.find(s =>
+            s.schedule_type === "override" &&
+            s.override_action === "reschedule" &&
+            s.specific_date === localDateStr
+          );
+
+          if (rescheduleOverride) {
+            setClassStartTime(rescheduleOverride.start_time);
+            setClassEndTime(rescheduleOverride.end_time);
+            setScheduleType("override");
+            setScheduleNote("Rescheduled session for today");
+            return;
+          }
+
+          setClassStartTime(null);
+          setScheduleType("none");
+          setScheduleNote("No class today");
           return;
         }
 
-        setClassStartTime(null);
-        setScheduleType("none");
-        setScheduleNote("No class today");
+        // Helper: turn "HH:MM" or "HH:MM:SS" into a Date set to today at that local time
+        const toLocalDate = (timeStr: string): Date => {
+          const [h, m] = timeStr.split(":").map(Number);
+          const d = new Date();
+          d.setHours(h, m, 0, 0);
+          return d;
+        };
+        const now = new Date();
+
+        // Drop classes whose end time has already passed (uses local clock, no UTC ambiguity)
+        const activeOrUpcoming = baseToday.filter(s => {
+          if (!s.end_time) return true;
+          return toLocalDate(s.end_time) > now;
+        });
+
+        // Sort by start_time — earliest eligible class is picked first
+        activeOrUpcoming.sort((a, b) => {
+          const aStart = a.start_time ? toLocalDate(a.start_time).getTime() : 0;
+          const bStart = b.start_time ? toLocalDate(b.start_time).getTime() : 0;
+          return aStart - bStart;
+        });
+
+        if (activeOrUpcoming.length === 0) {
+
+          setClassStartTime(null);
+          setScheduleType("none");
+          setScheduleNote("No class today");
+          return;
+        }
+
+        // Take the first base class for today (usually just one)
+        const base = activeOrUpcoming[0];
+
+        // Check if an override exists for this base class specifically for today
+        const override = allSchedules.find(s =>
+          s.schedule_type === "override" &&
+          s.parent_schedule_id === base.id &&
+          s.specific_date === localDateStr
+        );
+
+        if (override) {
+          if (override.override_action === "cancel") {
+            // Class is cancelled today — scanner should be offline
+            setClassStartTime(null);
+            setScheduleType("none");
+            setScheduleNote("Today's class has been cancelled");
+            return;
+          }
+          if (override.override_action === "reschedule") {
+            // Time change for today — use override times
+            setClassStartTime(override.start_time);
+            setClassEndTime(override.end_time);
+            setScheduleType("override");
+            setScheduleNote("Rescheduled — time changed for today");
+            return;
+          }
+        }
+
+        // Normal scheduled class
+        setClassStartTime(base.start_time);
+        setClassEndTime(base.end_time);
+        setScheduleType("regular");
+        setScheduleNote(`${base.schedule_type === "one_time" ? "Special session" : "Regular class"} today`);
+
       } catch (error) {
         console.error("Error fetching schedule:", error);
         setScheduleType("none");
