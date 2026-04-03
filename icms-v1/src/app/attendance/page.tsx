@@ -33,6 +33,7 @@ export default function AttendanceHub() {
   // Manual Check-In State
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [manualStatus, setManualStatus] = useState<"present" | "absent">("present");
   const [isProcessing, setIsProcessing] = useState(false);
 
   const getNowDate = () => new Date().toISOString().split("T")[0];
@@ -136,7 +137,9 @@ export default function AttendanceHub() {
         ? logsData
         : logsData.filter((log) => new Date(log.scanned_at) >= today);
 
-      const uniqueStudentIdsToday = new Set(todaysLogs.map((log) => log.student_id));
+      // Only count present/manual entries toward today's attendance (not absent)
+      const presentLogsToday = todaysLogs.filter(log => log.status !== "absent");
+      const uniqueStudentIdsToday = new Set(presentLogsToday.map((log) => log.student_id));
       setTodayCount(uniqueStudentIdsToday.size);
 
       uniqueStudentIdsToday.forEach((id) => {
@@ -161,7 +164,6 @@ export default function AttendanceHub() {
       const student = activeStudents.find((s) => s.id === selectedStudentId);
       if (!student) throw new Error("Student not found");
 
-      // Build a precise ISO timestamp from the admin-selected date + time
       const timestamp = new Date(`${manualDate}T${manualTime}:00`).toISOString();
       const dayStart = new Date(`${manualDate}T00:00:00`).toISOString();
       const dayEnd = new Date(`${manualDate}T23:59:59`).toISOString();
@@ -175,43 +177,45 @@ export default function AttendanceHub() {
         .single();
 
       if (existing) {
-        alert(`This student is already checked in for ${manualDate}!`);
+        alert(`A log already exists for this student on ${manualDate}.`);
         setIsProcessing(false);
         return;
       }
 
-      await supabase.from("attendance_logs").insert([
-        {
-          student_id: student.id,
-          scanned_at: timestamp,
-          status: "manual",
-        },
-      ]);
+      await supabase.from("attendance_logs").insert([{
+        student_id: student.id,
+        scanned_at: timestamp,
+        status: manualStatus === "absent" ? "absent" : "manual",
+      }]);
 
-      await supabase.from("xp_transactions").insert([
-        {
+      // Only award XP for present entries
+      if (manualStatus === "present") {
+        await supabase.from("xp_transactions").insert([{
           student_id: student.id,
           amount: 10,
           reason: "Manual Class Check-In",
-        },
-      ]);
-
-      await supabase
-        .from("students")
-        .update({
-          total_xp: student.total_xp + 10,
-          cycle_classes: (student.cycle_classes || 0) + 1,
-        })
-        .eq("id", student.id);
+        }]);
+        await supabase
+          .from("students")
+          .update({ total_xp: student.total_xp + 10, cycle_classes: (student.cycle_classes || 0) + 1 })
+          .eq("id", student.id);
+      } else {
+        // Absent — still counts toward total classes, no XP
+        await supabase
+          .from("students")
+          .update({ cycle_classes: (student.cycle_classes || 0) + 1 })
+          .eq("id", student.id);
+      }
 
       setManualModal(false);
       setSelectedStudentId("");
+      setManualStatus("present");
       setManualDate(getNowDate());
       setManualTime(getNowTime());
       fetchData();
     } catch (err) {
-      console.error("Manual check-in failed:", err);
-      alert("Failed to process check-in.");
+      console.error("Manual log failed:", err);
+      alert("Failed to process entry.");
     } finally {
       setIsProcessing(false);
     }
@@ -233,13 +237,13 @@ export default function AttendanceHub() {
             <div className="flex justify-between items-start mb-6">
               <div>
                 <h2 className="text-2xl font-black text-slate-800">
-                  Manual Check-In
+                  Manual Log Entry
                 </h2>
                 <p className="text-sm font-bold text-slate-500 mt-1">
-                  For students who forgot their ID card.
+                  Log a student's attendance manually.
                 </p>
               </div>
-              <div className="text-4xl">✍️</div>
+              <div className="text-4xl">{manualStatus === "absent" ? "🚫" : "✍️"}</div>
             </div>
 
             <form onSubmit={handleManualCheckIn} className="space-y-5">
@@ -288,10 +292,41 @@ export default function AttendanceHub() {
                 </div>
               </div>
 
-              <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm font-medium text-blue-800">
-                They will receive{" "}
-                <strong className="font-black">+10 Base XP</strong> and their
-                cycle counter will increment by 1.
+              {/* Present / Absent Toggle */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setManualStatus("present")}
+                  className={`flex-1 py-3 px-4 rounded-xl font-black text-sm border-2 transition-all ${
+                    manualStatus === "present"
+                      ? "bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/25"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-emerald-300"
+                  }`}
+                >
+                  ✅ Present
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setManualStatus("absent")}
+                  className={`flex-1 py-3 px-4 rounded-xl font-black text-sm border-2 transition-all ${
+                    manualStatus === "absent"
+                      ? "bg-red-500 text-white border-red-500 shadow-lg shadow-red-500/25"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-red-300"
+                  }`}
+                >
+                  🚫 Absent
+                </button>
+              </div>
+
+              <div className={`p-4 rounded-xl border text-sm font-medium ${
+                manualStatus === "absent"
+                  ? "bg-red-50 border-red-100 text-red-800"
+                  : "bg-blue-50 border-blue-100 text-blue-800"
+              }`}>
+                {manualStatus === "absent"
+                  ? <>This will be logged as <strong className="font-black">absent</strong>. No XP will be awarded.</>
+                  : <>They will receive <strong className="font-black">+10 Base XP</strong> and their cycle counter will increment by 1.</>
+                }
               </div>
 
               <div className="flex gap-3 pt-4">
@@ -305,9 +340,13 @@ export default function AttendanceHub() {
                 <button
                   type="submit"
                   disabled={isProcessing || !selectedStudentId}
-                  className="flex-1 py-3 px-4 bg-blue-600 text-white font-black rounded-xl hover:bg-blue-500 shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50"
+                  className={`flex-1 py-3 px-4 text-white font-black rounded-xl shadow-lg transition-all disabled:opacity-50 ${
+                    manualStatus === "absent"
+                      ? "bg-red-500 hover:bg-red-400 shadow-red-500/30"
+                      : "bg-blue-600 hover:bg-blue-500 shadow-blue-600/30"
+                  }`}
                 >
-                  {isProcessing ? "Processing..." : "Check In"}
+                  {isProcessing ? "Processing..." : manualStatus === "absent" ? "Log Absent" : "Check In"}
                 </button>
               </div>
             </form>
@@ -539,7 +578,11 @@ export default function AttendanceHub() {
                       </td>
 
                       <td className="p-5 text-right">
-                        {log.status === "manual" ? (
+                        {log.status === "absent" ? (
+                          <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-600 border border-red-200 px-3 py-1.5 rounded-lg font-bold text-xs uppercase tracking-wider">
+                            <span>🚫</span> Absent
+                          </span>
+                        ) : log.status === "manual" ? (
                           <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 px-3 py-1.5 rounded-lg font-bold text-xs uppercase tracking-wider">
                             <span>✍️</span> Manual
                           </span>
