@@ -29,7 +29,8 @@ export default function StudentsHub() {
   const [previewQrUrl, setPreviewQrUrl] = useState("");
 
   const [xpModal, setXpModal] = useState<any | null>(null);
-  const [xpAmount, setXpAmount] = useState<number>(50);
+  const [xpAmount, setXpAmount] = useState<number>(10);
+  const [xpReason, setXpReason] = useState("");
   const [isAwardingXp, setIsAwardingXp] = useState(false);
 
   // New state to track which row's dropdown is currently open
@@ -149,7 +150,7 @@ export default function StudentsHub() {
         {
           student_id: xpModal.id,
           amount: xpAmount,
-          reason: "Bonus XP (Admin Awarded)",
+          reason: xpReason || "Bonus XP (Admin Awarded)",
         },
       ]);
 
@@ -171,6 +172,7 @@ export default function StudentsHub() {
       );
       setXpModal(null);
       setXpAmount(10);
+      setXpReason("");
     } catch (err) {
       console.error("Failed to award XP:", err);
       alert("Failed to update XP.");
@@ -213,29 +215,67 @@ export default function StudentsHub() {
                 <label className="block text-sm font-bold text-slate-700 mb-2 text-center">
                   Amount of XP to Award
                 </label>
-                <div className="flex items-center justify-center gap-4 bg-amber-50 p-6 rounded-2xl border border-amber-100">
-                  <button
-                    type="button"
-                    onClick={() => setXpAmount(Math.max(0, xpAmount - 10))}
-                    className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    required
-                    value={xpAmount}
-                    onChange={(e) => setXpAmount(Number(e.target.value))}
-                    className="w-24 bg-transparent outline-none text-center text-4xl font-black text-amber-600 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setXpAmount(xpAmount + 10)}
-                    className="w-12 h-12 rounded-full bg-white text-amber-600 font-black text-xl shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
-                  >
-                    +
-                  </button>
+                <div className="flex items-center justify-center gap-2 bg-amber-50 p-6 rounded-2xl border border-amber-100">
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setXpAmount(xpAmount + 10)}
+                      className="w-10 h-8 rounded-lg bg-white text-amber-600 font-bold text-xs shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      +10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setXpAmount(Math.max(1, xpAmount - 10))}
+                      className="w-10 h-8 rounded-lg bg-white text-amber-600 font-bold text-xs shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      -10
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setXpAmount(Math.max(1, xpAmount - 1))}
+                      className="w-10 h-10 rounded-full bg-white text-amber-600 font-black text-lg shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={xpAmount}
+                      onChange={(e) => setXpAmount(Math.max(1, Number(e.target.value)))}
+                      className="w-20 bg-transparent outline-none text-center text-3xl font-black text-amber-600 font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setXpAmount(xpAmount + 1)}
+                      className="w-10 h-10 rounded-full bg-white text-amber-600 font-black text-lg shadow-sm border border-amber-200 hover:bg-amber-100 transition-colors"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-2 opacity-0 pointer-events-none">
+                    {/* Spacer for symmetry */}
+                    <div className="w-10 h-8"></div>
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Achievement / Reason Note
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Exceptional participation"
+                  value={xpReason}
+                  onChange={(e) => setXpReason(e.target.value)}
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-amber-500 focus:ring-4 focus:ring-amber-500/20 outline-none transition-all font-bold text-slate-800 placeholder:text-slate-400"
+                />
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -590,6 +630,7 @@ export default function StudentsHub() {
                                     onClick={() => {
                                       setXpModal(student);
                                       setXpAmount(10);
+                                      setXpReason("");
                                       setOpenMenuId(null);
                                     }}
                                     className="w-full text-left px-3 py-2.5 hover:bg-amber-50 text-amber-700 font-bold text-xs rounded-xl transition-colors flex items-center gap-3"
