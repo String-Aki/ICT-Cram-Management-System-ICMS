@@ -65,15 +65,28 @@ function QuestsRegistryContent() {
         const { data: allQuests } = await supabase
           .from("class_materials")
           .select("*")
-          .eq("grade_batch", student?.grade_batch)
+          .in("grade_batch", [student?.grade_batch, "All"])
           .eq("type", "homework")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
 
-        setQuests(allQuests || []);
+        const filteredQuests = (allQuests || []).filter((q: any) => {
+          let targets = q.target_students;
+          if (typeof targets === 'string') {
+             try { targets = JSON.parse(targets); } 
+             catch(e) { targets = targets.replace(/[{}]/g, '').split(',').map((s: string) => s.trim()); }
+          }
+          if (Array.isArray(targets)) {
+             const validTargets = targets.filter((t: string) => t && t.length > 5);
+             if (validTargets.length > 0) return validTargets.includes(activeStudentId);
+          }
+          return true;
+        });
 
-        if (questIdFromUrl && allQuests) {
-          const found = allQuests.find((q) => q.id === questIdFromUrl);
+        setQuests(filteredQuests);
+
+        if (questIdFromUrl && filteredQuests) {
+          const found = filteredQuests.find((q) => q.id === questIdFromUrl);
           if (found) setSelectedQuest(found);
         }
       } catch (err) {

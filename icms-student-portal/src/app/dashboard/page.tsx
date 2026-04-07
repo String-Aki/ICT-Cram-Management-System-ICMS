@@ -50,7 +50,7 @@ export default function StudentDashboard() {
         const { data: materials, error: matError } = await supabase
           .from("class_materials")
           .select("*")
-          .eq("grade_batch", studentData.grade_batch)
+          .in("grade_batch", [studentData.grade_batch, "All"])
           .eq("type", "homework")
           .eq("is_active", true)
           .order("created_at", { ascending: false });
@@ -64,11 +64,24 @@ export default function StudentDashboard() {
 
         if (subError) throw subError;
 
+        const filteredMaterials = (materials || []).filter((q: any) => {
+          let targets = q.target_students;
+          if (typeof targets === 'string') {
+             try { targets = JSON.parse(targets); } 
+             catch(e) { targets = targets.replace(/[{}]/g, '').split(',').map((s: string) => s.trim()); }
+          }
+          if (Array.isArray(targets)) {
+             const validTargets = targets.filter((t: string) => t && t.length > 5);
+             if (validTargets.length > 0) return validTargets.includes(activeStudentId);
+          }
+          return true;
+        });
+
         const completedIds = new Set(
           submissions?.map((s) => s.material_id) || [],
         );
         const pendingQuests =
-          materials?.filter((m) => !completedIds.has(m.id)) || [];
+          filteredMaterials.filter((m) => !completedIds.has(m.id));
 
         setActiveQuests(pendingQuests);
       } catch (error: any) {

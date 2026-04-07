@@ -40,7 +40,21 @@ export default function LibraryPage() {
           .order("created_at", { ascending: false });
 
         if (matError) throw matError;
-        setMaterials(vaultItems || []);
+
+        const filteredMaterials = (vaultItems || []).filter((item: any) => {
+          let targets = item.target_students;
+          if (typeof targets === 'string') {
+             try { targets = JSON.parse(targets); } 
+             catch(e) { targets = targets.replace(/[{}]/g, '').split(',').map((s: string) => s.trim()); }
+          }
+          if (Array.isArray(targets)) {
+             const validTargets = targets.filter((t: string) => t && t.length > 5);
+             if (validTargets.length > 0) return validTargets.includes(studentId);
+          }
+          return true;
+        });
+
+        setMaterials(filteredMaterials);
 
       } catch (error) {
         console.error("Error fetching library materials:", error);

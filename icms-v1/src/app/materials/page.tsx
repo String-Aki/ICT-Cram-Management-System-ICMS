@@ -11,6 +11,8 @@ export default function MaterialsHub() {
 
   const [selectedGrade, setSelectedGrade] = useState<string>("All");
   const [availableGrades, setAvailableGrades] = useState<string[]>([]);
+  const [allActiveStudents, setAllActiveStudents] = useState<any[]>([]);
+  const [selectedTargetStudents, setSelectedTargetStudents] = useState<string[]>([]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [newType, setNewType] = useState<"material" | "homework">("material");
@@ -36,9 +38,11 @@ export default function MaterialsHub() {
 
     const { data: gradesData } = await supabase
       .from("students")
-      .select("grade_batch")
-      .eq("is_active", true);
+      .select("id, grade_batch, full_name")
+      .eq("is_active", true)
+      .order("full_name");
     if (gradesData) {
+      setAllActiveStudents(gradesData);
       const uniqueGrades = Array.from(
         new Set(gradesData.map((g) => g.grade_batch)),
       ).sort();
@@ -75,14 +79,20 @@ export default function MaterialsHub() {
           grade_batch: newGrade,
           xp_reward: newType === "homework" ? newXp : 0,
           deadline: newType === "homework" && newDeadline ? newDeadline : null,
+          target_students: selectedTargetStudents.length > 0 ? selectedTargetStudents : null,
           is_active: true,
         },
       ]);
 
       if (error) throw error;
 
-      // Broadcast Push Notification silently to the exact Grade
-      const targets = newGrade === "All" ? undefined : { gradeBatches: [newGrade] };
+      // Broadcast Push Notification
+      let targets: { gradeBatches?: string[], studentIds?: string[] } | undefined;
+      if (selectedTargetStudents.length > 0) {
+        targets = { studentIds: selectedTargetStudents };
+      } else if (newGrade !== "All") {
+        targets = { gradeBatches: [newGrade] };
+      }
       const bodyText = newType === "homework"
         ? `"${newTitle}" has just dropped! Check it out and grab that XP! 🚀`
         : `"${newTitle}" has been uploaded. Tap to review your new study notes! 📘`;
@@ -102,6 +112,7 @@ export default function MaterialsHub() {
       setNewUrl("");
       setNewGrade("");
       setNewDeadline("");
+      setSelectedTargetStudents([]);
       fetchMaterials();
     } catch (err) {
       console.error("Error adding material:", err);
@@ -153,14 +164,25 @@ export default function MaterialsHub() {
     setGradingMaterial(material);
     setIsGrading(true);
 
-    const { data: studentsData } = await supabase
+    let query = supabase
       .from("students")
       .select("id, full_name, qr_code, total_xp")
       .eq("is_active", true)
-      .eq("grade_batch", material.grade_batch)
       .order("full_name", { ascending: true });
 
-    if (studentsData) setRoster(studentsData);
+    if (material.grade_batch !== "All") {
+      query = query.eq("grade_batch", material.grade_batch);
+    }
+
+    const { data: studentsData } = await query;
+
+    if (studentsData) {
+      if (material.target_students && material.target_students.length > 0) {
+        setRoster(studentsData.filter((s) => material.target_students.includes(s.id)));
+      } else {
+        setRoster(studentsData);
+      }
+    }
 
     const { data: subsData } = await supabase
       .from("homework_submissions")
@@ -232,8 +254,8 @@ export default function MaterialsHub() {
               <div className="text-4xl">📚</div>
             </div>
 
-            <form onSubmit={handleAddMaterial} className="space-y-5">
-              <div className="flex bg-slate-100 p-1 rounded-xl">
+            <form onSubmit={handleAddMaterial} className="flex flex-col gap-5">
+              <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
                 <button
                   type="button"
                   onClick={() => setNewType("material")}
@@ -250,7 +272,8 @@ export default function MaterialsHub() {
                 </button>
               </div>
 
-              <div>
+              <div className="max-h-[45vh] sm:max-h-[50vh] overflow-y-auto space-y-5 pr-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">
                   Title
                 </label>
@@ -306,6 +329,51 @@ export default function MaterialsHub() {
                 )}
               </div>
 
+              <div>
+                <div className="flex justify-between items-end mb-1">
+                  <label className="block text-sm font-bold text-slate-700">
+                    Target Specific Students (Optional)
+                  </label>
+                  {selectedTargetStudents.length > 0 && (
+                    <button 
+                      type="button" 
+                      onClick={() => setSelectedTargetStudents([])}
+                      className="text-[10px] text-red-500 font-bold hover:underline bg-red-50 px-2 py-0.5 rounded"
+                    >
+                      Clear Selection ({selectedTargetStudents.length})
+                    </button>
+                  )}
+                </div>
+                {newGrade && newGrade !== "All" ? (
+                  <div className="max-h-40 overflow-y-auto mt-2 border-2 border-slate-200 rounded-xl p-2 bg-slate-50 space-y-1 custom-scrollbar">
+                    {allActiveStudents.filter(s => s.grade_batch === newGrade).map(student => (
+                      <label key={student.id} className="flex items-center gap-3 text-sm p-2 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={selectedTargetStudents.includes(student.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedTargetStudents([...selectedTargetStudents, student.id]);
+                            } else {
+                              setSelectedTargetStudents(selectedTargetStudents.filter(id => id !== student.id));
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                        />
+                        <span className="font-bold text-slate-700">{SNT(student.full_name)}</span>
+                      </label>
+                    ))}
+                    {allActiveStudents.filter(s => s.grade_batch === newGrade).length === 0 && (
+                      <p className="text-xs text-slate-500 p-2 font-medium">No students found for Grade {newGrade}.</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-500 p-3 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                    Select a specific Target Grade above to view and target individual students.
+                  </p>
+                )}
+              </div>
+
               {newType === "homework" && (
                 <>
                   <div>
@@ -348,8 +416,9 @@ export default function MaterialsHub() {
                   className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-mono text-sm"
                 />
               </div>
+              </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-3 shrink-0 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAdding(false)}
@@ -557,7 +626,9 @@ export default function MaterialsHub() {
                     <div>
                       {/* THE FIX: Formatting "All" beautifully */}
                       <span className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border border-slate-200 mb-2 inline-block">
-                        {item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
+                        {item.target_students && item.target_students.length > 0 
+                          ? `Grade ${item.grade_batch} (${item.target_students.length} Target${item.target_students.length > 1 ? 's' : ''})`
+                          : item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                       </span>
                       <h3 className="font-bold text-slate-800 text-lg line-clamp-1">
                         {item.title}
@@ -610,7 +681,9 @@ export default function MaterialsHub() {
                           <span
                             className={`${item.is_active ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"} text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border`}
                           >
-                            {item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
+                            {item.target_students && item.target_students.length > 0 
+                              ? `Grade ${item.grade_batch} (${item.target_students.length} Target${item.target_students.length > 1 ? 's' : ''})`
+                              : item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                           </span>
                           {item.is_active ? (
                             <span className="text-xs font-black text-amber-500">
