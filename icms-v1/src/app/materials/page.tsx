@@ -30,6 +30,7 @@ export default function MaterialsHub() {
   const [isGrading, setIsGrading] = useState(false);
   
   const [questTab, setQuestTab] = useState<"active" | "closed">("active");
+  const [contentTab, setContentTab] = useState<"materials" | "homework">("homework");
 
   useEffect(() => {
     fetchMaterials();
@@ -240,7 +241,7 @@ export default function MaterialsHub() {
   const homeworkList = allHomeworkList.filter(m => questTab === "active" ? m.is_active : !m.is_active);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
+    <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8 overflow-x-hidden">
       {/* MODAL 1: ADD NEW MATERIAL */}
       {isAdding && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
@@ -610,9 +611,28 @@ export default function MaterialsHub() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <>
+            {/* Content Tab Switcher (visible only on stacked/single-column layouts) */}
+            <div className="flex xl:hidden bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 mb-4">
+              <button
+                onClick={() => setContentTab("materials")}
+                className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${contentTab === "materials" ? "bg-slate-800 text-white shadow-md" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+              >
+                <span>📘</span> Study Materials
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${contentTab === "materials" ? "bg-white/20" : "bg-slate-100"}`}>{materialsList.length}</span>
+              </button>
+              <button
+                onClick={() => setContentTab("homework")}
+                className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all flex items-center justify-center gap-2 ${contentTab === "homework" ? "bg-amber-500 text-white shadow-md" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"}`}
+              >
+                <span>⭐</span> Homework
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${contentTab === "homework" ? "bg-white/20" : "bg-slate-100"}`}>{allHomeworkList.length}</span>
+              </button>
+            </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start overflow-hidden">
             {/* STUDY MATERIALS */}
-            <div className="space-y-4">
+            <div className={`space-y-4 ${contentTab !== "materials" ? "hidden xl:block" : ""}`}>
               <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
                 <span>📘</span> Study Materials
               </h2>
@@ -664,23 +684,23 @@ export default function MaterialsHub() {
             </div>
 
             {/* HOMEWORK QUESTS */}
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+            <div className={`space-y-4 min-w-0 ${contentTab !== "homework" ? "hidden xl:block" : ""}`}>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2 shrink-0">
                   <span>⭐</span> Homework Quests
                 </h2>
-                <div className="flex bg-slate-200/50 p-1 rounded-xl shrink-0 w-full sm:w-auto">
+                <div className="flex bg-slate-200/50 p-1 rounded-xl shrink-0">
                    <button 
                      onClick={() => setQuestTab("active")}
-                     className={`flex-1 sm:w-28 py-1.5 text-xs font-bold rounded-lg transition-all ${questTab === "active" ? "bg-white text-amber-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"}`}
+                     className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${questTab === "active" ? "bg-white text-amber-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"}`}
                    >
                      Active
                    </button>
                    <button 
                      onClick={() => setQuestTab("closed")}
-                     className={`flex-1 sm:w-28 py-1.5 text-xs font-bold rounded-lg transition-all ${questTab === "closed" ? "bg-white text-slate-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"}`}
+                     className={`px-4 py-1.5 text-xs font-bold rounded-lg transition-all ${questTab === "closed" ? "bg-white text-slate-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"}`}
                    >
-                     Past / Closed
+                     Closed
                    </button>
                 </div>
               </div>
@@ -766,6 +786,7 @@ export default function MaterialsHub() {
               )}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>

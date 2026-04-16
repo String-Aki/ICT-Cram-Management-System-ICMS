@@ -308,19 +308,31 @@ export default function AttendanceScanner({
       "border-orange-500 shadow-[0_0_40px_rgba(249,115,22,0.4)] bg-orange-500",
   };
 
+  const isMultiSession = todaySessions.length > 1;
+
   return (
-    <div className="w-full flex flex-col items-center max-w-sm mx-auto">
-      <div className="flex items-center gap-2 mb-6 bg-slate-100 px-4 py-2 rounded-full border border-slate-200 shadow-sm">
-        <span
-          className={`w-2.5 h-2.5 rounded-full ${scanState === "idle" ? "bg-blue-500 animate-pulse" : "bg-slate-300"}`}
-        ></span>
-        <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-          {scanState === "idle" ? "Camera Active" : "Processing"}
-        </span>
+    <div className="w-full h-full flex flex-col items-center justify-center max-w-[320px] mx-auto">
+      {/* Status badges row */}
+      <div className="flex items-center gap-2 mb-3 shrink-0">
+        <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
+          <span
+            className={`w-2 h-2 rounded-full ${scanState === "idle" ? "bg-blue-500 animate-pulse" : "bg-slate-300"}`}
+          ></span>
+          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            {scanState === "idle" ? "Camera Active" : "Processing"}
+          </span>
+        </div>
+        {isMultiSession && (
+          <div className="flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1.5 rounded-full border border-emerald-200">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Smart</span>
+          </div>
+        )}
       </div>
 
+      {/* Camera viewport */}
       <div
-        className={`relative w-full aspect-square rounded-[2.5rem] overflow-hidden border-8 transition-all duration-300 ${stateStyles[scanState].split(" bg-")[0]} bg-slate-900 [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:rounded-[1.8rem]`}
+        className={`relative w-full aspect-square rounded-[2rem] overflow-hidden border-[6px] transition-all duration-300 ${stateStyles[scanState].split(" bg-")[0]} bg-slate-900 [&_video]:object-cover [&_video]:w-full [&_video]:h-full [&_video]:rounded-[1.5rem]`}
         style={{ WebkitTransform: "translateZ(0)", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
       >
         <Scanner
@@ -333,14 +345,15 @@ export default function AttendanceScanner({
         />
       </div>
 
-      <div className="mt-8 w-full">
+      {/* Status bar */}
+      <div className="mt-3 w-full shrink-0">
         <div
-          className={`w-full py-4 px-6 rounded-2xl font-black text-center text-xl tracking-wide transition-all duration-300 text-white shadow-lg ${stateStyles[scanState].split(" ")[2]} ${scanState === "duplicate" || scanState === "error" ? "animate-[shake_0.5s_ease-in-out]" : ""}`}
+          className={`w-full py-3 px-4 rounded-xl font-black text-center text-base tracking-wide transition-all duration-300 text-white shadow-lg ${stateStyles[scanState].split(" ")[2]} ${scanState === "duplicate" || scanState === "error" ? "animate-[shake_0.5s_ease-in-out]" : ""}`}
         >
           {statusMessage}
         </div>
         {scanState === "idle" && (
-          <p className="text-center text-slate-400 font-medium text-sm mt-4">
+          <p className="text-center text-slate-400 font-medium text-xs mt-2">
             Hold ID Card steady in the frame
           </p>
         )}
