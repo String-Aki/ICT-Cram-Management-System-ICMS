@@ -5,7 +5,18 @@ import AttendanceScanner from "@/components/AttendanceScanner";
 import { supabase } from "@/lib/supabase";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ChevronDown } from "lucide-react";
+
+export type TodaySession = {
+  id: string;
+  title: string;
+  start_time: string | null;
+  end_time: string | null;
+  schedule_type: string;
+  target_grades: string[];
+  target_students: string[];
+  _origin: "regular" | "override";
+};
 
 export default function AttendanceKiosk() {
   const [lastScanned, setLastScanned] = useState<any | null>(null);
@@ -13,15 +24,13 @@ export default function AttendanceKiosk() {
   const [isOfflineScan, setIsOfflineScan] = useState(false);
   const [isDuplicateScan, setIsDuplicateScan] = useState(false);
 
-  const [classStartTime, setClassStartTime] = useState<string | null>(null);
-  const [classEndTime, setClassEndTime] = useState<string | null>(null);
-  const [scheduleType, setScheduleType] = useState<
-    "loading" | "regular" | "override" | "none"
-  >("loading");
-  const [scheduleNote, setScheduleNote] = useState<string>("");
+  const [todaySessions, setTodaySessions] = useState<TodaySession[]>([]);
+  const [manualSessionId, setManualSessionId] = useState<string | null>(null);
+  const [scheduleStatus, setScheduleStatus] = useState<"loading" | "ready" | "none">("loading");
+  const [scheduleNote, setScheduleNote] = useState("");
 
   useEffect(() => {
-    const fetchTodaySchedule = async () => {
+    const fetchTodaySessions = async () => {
       const today = new Date();
       const year = today.getFullYear();
       const month = String(today.getMonth() + 1).padStart(2, "0");
@@ -30,7 +39,6 @@ export default function AttendanceKiosk() {
       const dayOfWeek = today.getDay();
 
       try {
-        // Fetch all active schedules from the current schedules table
         const { data: allSchedules, error } = await supabase
           .from("schedules")
           .select("*")
@@ -38,41 +46,24 @@ export default function AttendanceKiosk() {
 
         if (error) throw error;
         if (!allSchedules || allSchedules.length === 0) {
-          setClassStartTime(null);
-          setScheduleType("none");
+          setScheduleStatus("none");
           setScheduleNote("No class today");
           return;
         }
 
-        // Find base classes for today: recurring matching day_of_week OR one_time matching today's date
+        // Find base classes for today
         const baseToday = allSchedules.filter(s =>
           (s.schedule_type === "recurring" && s.day_of_week === dayOfWeek) ||
           (s.schedule_type === "one_time" && s.specific_date === localDateStr)
         );
 
-        if (baseToday.length === 0) {
-          // Also check if a cross-day reschedule override lands today
-          const rescheduleOverride = allSchedules.find(s =>
-            s.schedule_type === "override" &&
-            s.override_action === "reschedule" &&
-            s.specific_date === localDateStr
-          );
+        // Find cross-day reschedule overrides landing today
+        const rescheduleOverridesToday = allSchedules.filter(s =>
+          s.schedule_type === "override" &&
+          s.override_action === "reschedule" &&
+          s.specific_date === localDateStr
+        );
 
-          if (rescheduleOverride) {
-            setClassStartTime(rescheduleOverride.start_time);
-            setClassEndTime(rescheduleOverride.end_time);
-            setScheduleType("override");
-            setScheduleNote("Rescheduled session for today");
-            return;
-          }
-
-          setClassStartTime(null);
-          setScheduleType("none");
-          setScheduleNote("No class today");
-          return;
-        }
-
-        // Helper: turn "HH:MM" or "HH:MM:SS" into a Date set to today at that local time
         const toLocalDate = (timeStr: string): Date => {
           const [h, m] = timeStr.split(":").map(Number);
           const d = new Date();
@@ -81,68 +72,111 @@ export default function AttendanceKiosk() {
         };
         const now = new Date();
 
-        // Drop classes whose end time has already passed (uses local clock, no UTC ambiguity)
-        const activeOrUpcoming = baseToday.filter(s => {
+        // Build the final session list, applying per-schedule overrides
+        const sessions: TodaySession[] = [];
+
+        for (const base of baseToday) {
+          // Check for a cancel/reschedule override on this specific base class today
+          const override = allSchedules.find(s =>
+            s.schedule_type === "override" &&
+            s.parent_schedule_id === base.id &&
+            s.specific_date === localDateStr
+          );
+
+          if (override) {
+            if (override.override_action === "cancel") {
+              // Skip this class entirely — it's cancelled
+              continue;
+            }
+            if (override.override_action === "reschedule") {
+              // Use override times instead of base times
+              sessions.push({
+                id: base.id,
+                title: base.title,
+                start_time: override.start_time,
+                end_time: override.end_time,
+                schedule_type: base.schedule_type,
+                target_grades: base.target_grades || [],
+                target_students: base.target_students || [],
+                _origin: "override",
+              });
+              continue;
+            }
+          }
+
+          // No override — use base schedule as-is
+          sessions.push({
+            id: base.id,
+            title: base.title,
+            start_time: base.start_time,
+            end_time: base.end_time,
+            schedule_type: base.schedule_type,
+            target_grades: base.target_grades || [],
+            target_students: base.target_students || [],
+            _origin: "regular",
+          });
+        }
+
+        // Add any cross-day reschedule overrides that don't match an existing base
+        for (const ov of rescheduleOverridesToday) {
+          const alreadyIncluded = sessions.some(s => s.id === ov.parent_schedule_id);
+          if (!alreadyIncluded) {
+            sessions.push({
+              id: ov.parent_schedule_id || ov.id,
+              title: ov.title,
+              start_time: ov.start_time,
+              end_time: ov.end_time,
+              schedule_type: "one_time",
+              target_grades: ov.target_grades || [],
+              target_students: ov.target_students || [],
+              _origin: "override",
+            });
+          }
+        }
+
+        // Filter out sessions that have already ended
+        const activeSessions = sessions.filter(s => {
           if (!s.end_time) return true;
           return toLocalDate(s.end_time) > now;
         });
 
-        // Sort by start_time — earliest eligible class is picked first
-        activeOrUpcoming.sort((a, b) => {
-          const aStart = a.start_time ? toLocalDate(a.start_time).getTime() : 0;
-          const bStart = b.start_time ? toLocalDate(b.start_time).getTime() : 0;
-          return aStart - bStart;
+        // Sort by start time
+        activeSessions.sort((a, b) => {
+          const aT = a.start_time ? toLocalDate(a.start_time).getTime() : 0;
+          const bT = b.start_time ? toLocalDate(b.start_time).getTime() : 0;
+          return aT - bT;
         });
 
-        if (activeOrUpcoming.length === 0) {
-
-          setClassStartTime(null);
-          setScheduleType("none");
+        if (activeSessions.length === 0) {
+          setScheduleStatus("none");
           setScheduleNote("No class today");
           return;
         }
 
-        // Take the first base class for today (usually just one)
-        const base = activeOrUpcoming[0];
+        setTodaySessions(activeSessions);
+        setManualSessionId(activeSessions[0].id);
+        setScheduleStatus("ready");
 
-        // Check if an override exists for this base class specifically for today
-        const override = allSchedules.find(s =>
-          s.schedule_type === "override" &&
-          s.parent_schedule_id === base.id &&
-          s.specific_date === localDateStr
-        );
-
-        if (override) {
-          if (override.override_action === "cancel") {
-            // Class is cancelled today — scanner should be offline
-            setClassStartTime(null);
-            setScheduleType("none");
-            setScheduleNote("Today's class has been cancelled");
-            return;
-          }
-          if (override.override_action === "reschedule") {
-            // Time change for today — use override times
-            setClassStartTime(override.start_time);
-            setClassEndTime(override.end_time);
-            setScheduleType("override");
-            setScheduleNote("Rescheduled — time changed for today");
-            return;
-          }
+        if (activeSessions.length === 1) {
+          const s = activeSessions[0];
+          setScheduleNote(
+            s._origin === "override"
+              ? "Rescheduled session"
+              : s.schedule_type === "one_time"
+                ? "Special session today"
+                : "Regular class today"
+          );
+        } else {
+          setScheduleNote(`${activeSessions.length} sessions today`);
         }
-
-        // Normal scheduled class
-        setClassStartTime(base.start_time);
-        setClassEndTime(base.end_time);
-        setScheduleType("regular");
-        setScheduleNote(`${base.schedule_type === "one_time" ? "Special session" : "Regular class"} today`);
 
       } catch (error) {
         console.error("Error fetching schedule:", error);
-        setScheduleType("none");
+        setScheduleStatus("none");
       }
     };
 
-    fetchTodaySchedule();
+    fetchTodaySessions();
   }, []);
 
   const handleSuccessfulScan = (
@@ -156,6 +190,8 @@ export default function AttendanceKiosk() {
     setIsOfflineScan(offline);
     setIsDuplicateScan(duplicate);
   };
+
+  const selectedSession = todaySessions.find(s => s.id === manualSessionId) || null;
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-6 lg:p-8 flex flex-col font-sans">
@@ -192,47 +228,76 @@ export default function AttendanceKiosk() {
           </div>
         </div>
 
-        {/* AUTOMATED SCHEDULE READOUT */}
-        <div
-          className={`flex items-center gap-4 p-3 pr-5 rounded-2xl border w-full md:w-auto shadow-sm ${
-            scheduleType === "override"
-              ? "bg-amber-50 border-amber-200"
-              : scheduleType === "regular"
-                ? "bg-blue-50 border-blue-200"
-                : "bg-slate-50 border-slate-200"
-          }`}
-        >
+        {/* SCHEDULE READOUT + SESSION SELECTOR */}
+        <div className="flex items-center gap-3 w-full md:w-auto">
+          {/* Session Dropdown (only visible when multiple sessions) */}
+          {todaySessions.length > 1 && (
+            <div className="relative">
+              <select
+                value={manualSessionId || ""}
+                onChange={(e) => setManualSessionId(e.target.value)}
+                className="appearance-none bg-white border-2 border-blue-200 text-slate-800 text-sm font-bold rounded-xl px-4 py-3 pr-10 outline-none focus:border-blue-400 cursor-pointer transition-colors shadow-sm"
+              >
+                {todaySessions.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.title} ({s.start_time})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="w-4 h-4 text-blue-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          )}
+
+          {/* Schedule Status Readout */}
           <div
-            className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
-              scheduleType === "override"
-                ? "bg-amber-100 text-amber-600"
-                : scheduleType === "regular"
-                  ? "bg-blue-100 text-blue-600"
-                  : "bg-slate-200 text-slate-500"
+            className={`flex items-center gap-4 p-3 pr-5 rounded-2xl border flex-1 md:flex-none shadow-sm ${
+              scheduleStatus === "ready" && selectedSession?._origin === "override"
+                ? "bg-amber-50 border-amber-200"
+                : scheduleStatus === "ready"
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-slate-50 border-slate-200"
             }`}
           >
-            {scheduleType === "override"
-              ? "⚠️"
-              : scheduleType === "regular"
-                ? "⏱️"
-                : "🗓️"}
-          </div>
-          <div>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-              {scheduleType === "loading"
-                ? "Loading Schedule..."
-                : scheduleNote}
-            </p>
-            {classStartTime ? (
-              <p className="text-lg font-black text-slate-800 font-mono tracking-tight">
-                {classStartTime} — {classEndTime || "??:??"}
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${
+                scheduleStatus === "ready" && selectedSession?._origin === "override"
+                  ? "bg-amber-100 text-amber-600"
+                  : scheduleStatus === "ready"
+                    ? "bg-blue-100 text-blue-600"
+                    : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              {scheduleStatus === "ready" && selectedSession?._origin === "override"
+                ? "⚠️"
+                : scheduleStatus === "ready"
+                  ? "⏱️"
+                  : "🗓️"}
+            </div>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                {scheduleStatus === "loading"
+                  ? "Loading Schedule..."
+                  : scheduleNote}
               </p>
-            ) : (
-              <p className="text-lg font-bold text-slate-400 tracking-tight">
-                Scanner Offline
-              </p>
-            )}
+              {scheduleStatus === "ready" && selectedSession ? (
+                <p className="text-lg font-black text-slate-800 font-mono tracking-tight">
+                  {selectedSession.start_time} — {selectedSession.end_time || "??:??"}
+                </p>
+              ) : (
+                <p className="text-lg font-bold text-slate-400 tracking-tight">
+                  {scheduleStatus === "loading" ? "..." : "Scanner Offline"}
+                </p>
+              )}
+            </div>
           </div>
+
+          {/* Smart Scanner Indicator */}
+          {todaySessions.length > 1 && (
+            <div className="hidden md:flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded-xl">
+              <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+              <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Smart Mode</span>
+            </div>
+          )}
         </div>
       </header>
 
@@ -244,7 +309,8 @@ export default function AttendanceKiosk() {
 
           <div className="relative z-10 w-full">
             <AttendanceScanner
-              classStartTime={classStartTime}
+              todaySessions={todaySessions}
+              manualSessionId={manualSessionId}
               onScanSuccess={handleSuccessfulScan}
             />
           </div>
@@ -267,9 +333,19 @@ export default function AttendanceKiosk() {
                 <h3 className="text-4xl md:text-5xl font-black text-slate-800 text-center mb-3 tracking-tight">
                   {lastScanned.full_name}
                 </h3>
-                <p className="text-xl text-slate-500 font-bold tracking-widest uppercase mb-12">
+                <p className="text-xl text-slate-500 font-bold tracking-widest uppercase mb-4">
                   {lastScanned.grade_batch}
                 </p>
+
+                {/* Matched Session Label */}
+                {lastScanned._matchedSessionTitle && !isDuplicateScan && (
+                  <p className="text-xs font-bold text-blue-500 bg-blue-50 px-4 py-1.5 rounded-full border border-blue-100 mb-8">
+                    Matched → {lastScanned._matchedSessionTitle}
+                  </p>
+                )}
+                {!lastScanned._matchedSessionTitle && !isDuplicateScan && !isOfflineScan && (
+                  <div className="mb-8"></div>
+                )}
 
                 {/* Status Banners */}
                 {isDuplicateScan ? (

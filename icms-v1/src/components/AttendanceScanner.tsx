@@ -4,9 +4,11 @@ import { useState } from "react";
 import { Scanner, outline } from "@yudiel/react-qr-scanner";
 import { supabase } from "@/lib/supabase";
 import { localDB } from "@/lib/localdb";
+import type { TodaySession } from "@/app/check-in/page";
 
 interface AttendanceScannerProps {
-  classStartTime: string | null;
+  todaySessions: TodaySession[];
+  manualSessionId: string | null;
   onScanSuccess?: (
     student: any,
     awardedXp: number,
@@ -16,7 +18,8 @@ interface AttendanceScannerProps {
 }
 
 export default function AttendanceScanner({
-  classStartTime,
+  todaySessions,
+  manualSessionId,
   onScanSuccess,
 }: AttendanceScannerProps) {
   const [lastScanned, setLastScanned] = useState<string | null>(null);
@@ -27,7 +30,39 @@ export default function AttendanceScanner({
     "Ready for next student",
   );
 
-  const calculateDynamicXP = (scanTimestamp: string): number => {
+  /**
+   * Smart Match: Given a student, find which of today's sessions they belong to.
+   * Priority: target_students (exact match) > target_grades > global (empty targets).
+   * Returns the matched session or null.
+   */
+  const smartMatchSession = (student: any): TodaySession | null => {
+    if (todaySessions.length === 0) return null;
+    if (todaySessions.length === 1) return todaySessions[0];
+
+    // 1. Exact student ID match in target_students
+    const byStudent = todaySessions.find(s =>
+      s.target_students && s.target_students.includes(student.id)
+    );
+    if (byStudent) return byStudent;
+
+    // 2. Grade batch match in target_grades
+    const byGrade = todaySessions.find(s =>
+      s.target_grades && s.target_grades.includes(student.grade_batch)
+    );
+    if (byGrade) return byGrade;
+
+    // 3. Global session (no targets at all)
+    const globalSession = todaySessions.find(s =>
+      (!s.target_students || s.target_students.length === 0) &&
+      (!s.target_grades || s.target_grades.length === 0)
+    );
+    if (globalSession) return globalSession;
+
+    // 4. No match found — will fall back to manual
+    return null;
+  };
+
+  const calculateDynamicXP = (scanTimestamp: string, classStartTime: string | null): number => {
     if (!classStartTime) return 10;
     const scanTime = new Date(scanTimestamp);
     const [hours, minutes] = classStartTime.split(":").map(Number);
@@ -53,7 +88,6 @@ export default function AttendanceScanner({
 
     const scanTimestamp = new Date().toISOString();
     const todayString = scanTimestamp.split("T")[0];
-    const finalXpToAward = calculateDynamicXP(scanTimestamp);
 
     if (navigator.onLine) {
       try {
@@ -64,29 +98,72 @@ export default function AttendanceScanner({
           .single();
         if (fetchError || !student) throw new Error("Student not found.");
 
-        const startOfDay = `${todayString}T00:00:00.000Z`;
-        const { data: existingLogs, error: logCheckError } = await supabase
-          .from("attendance_logs")
-          .select("id")
-          .eq("student_id", student.id)
-          .gte("scanned_at", startOfDay)
-          .limit(1);
-        if (logCheckError) throw logCheckError;
+        // --- SMART MATCH ---
+        let matchedSession = smartMatchSession(student);
 
-        if (existingLogs && existingLogs.length > 0) {
+        // Fallback to manual dropdown selection if smart match fails
+        if (!matchedSession && manualSessionId) {
+          matchedSession = todaySessions.find(s => s.id === manualSessionId) || null;
+        }
+
+        // Ultimate fallback: first session
+        if (!matchedSession && todaySessions.length > 0) {
+          matchedSession = todaySessions[0];
+        }
+
+        const sessionStartTime = matchedSession?.start_time || null;
+        const matchedScheduleId = matchedSession?.id || null;
+        const finalXpToAward = calculateDynamicXP(scanTimestamp, sessionStartTime);
+
+        // --- DUPLICATE CHECK (per schedule, not per day) ---
+        const startOfDay = `${todayString}T00:00:00.000Z`;
+        let isDuplicate = false;
+
+        if (matchedScheduleId) {
+          // Check if this student already scanned for THIS specific schedule today
+          const { data: existingLogs, error: logCheckError } = await supabase
+            .from("attendance_logs")
+            .select("id")
+            .eq("student_id", student.id)
+            .eq("schedule_id", matchedScheduleId)
+            .gte("scanned_at", startOfDay)
+            .limit(1);
+          if (logCheckError) throw logCheckError;
+          isDuplicate = !!(existingLogs && existingLogs.length > 0);
+        } else {
+          // No schedule matched — fall back to the old day-level check
+          const { data: existingLogs, error: logCheckError } = await supabase
+            .from("attendance_logs")
+            .select("id")
+            .eq("student_id", student.id)
+            .gte("scanned_at", startOfDay)
+            .limit(1);
+          if (logCheckError) throw logCheckError;
+          isDuplicate = !!(existingLogs && existingLogs.length > 0);
+        }
+
+        if (isDuplicate) {
           setScanState("duplicate");
           setStatusMessage("Already Checked In");
           if (onScanSuccess) onScanSuccess(student, 0, false, true);
         } else {
+          // --- LOG ATTENDANCE ---
+          const logPayload: any = {
+            student_id: student.id,
+            scanned_at: scanTimestamp,
+            status: "present",
+          };
+          // Attach schedule_id if we matched one
+          if (matchedScheduleId) {
+            logPayload.schedule_id = matchedScheduleId;
+          }
+
           const { error: logError } = await supabase
             .from("attendance_logs")
-            .insert({
-              student_id: student.id,
-              scanned_at: scanTimestamp,
-              status: "present",
-            });
+            .insert(logPayload);
           if (logError) throw logError;
 
+          // --- XP TRANSACTION ---
           const { error: txError } = await supabase
             .from("xp_transactions")
             .insert([
@@ -117,7 +194,12 @@ export default function AttendanceScanner({
 
           if (onScanSuccess) {
             onScanSuccess(
-              { ...student, total_xp: updatedXp, cycle_classes: updatedCycle },
+              {
+                ...student,
+                total_xp: updatedXp,
+                cycle_classes: updatedCycle,
+                _matchedSessionTitle: matchedSession?.title || null,
+              },
               finalXpToAward,
               false,
               false,
@@ -196,7 +278,8 @@ export default function AttendanceScanner({
     }
   };
 
-  if (!classStartTime) {
+  // No sessions at all — scanner is offline
+  if (todaySessions.length === 0) {
     return (
       <div className="w-full aspect-square max-w-sm mx-auto rounded-[2.5rem] bg-slate-100 flex flex-col items-center justify-center border-4 border-dashed border-slate-300 p-8 text-center transition-all">
         <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-6 shadow-inner text-4xl">

@@ -28,6 +28,8 @@ export default function MaterialsHub() {
   const [roster, setRoster] = useState<any[]>([]);
   const [submissions, setSubmissions] = useState<Set<string>>(new Set());
   const [isGrading, setIsGrading] = useState(false);
+  
+  const [questTab, setQuestTab] = useState<"active" | "closed">("active");
 
   useEffect(() => {
     fetchMaterials();
@@ -234,7 +236,8 @@ export default function MaterialsHub() {
   };
 
   const materialsList = materials.filter((m) => m.type === "material");
-  const homeworkList = materials.filter((m) => m.type === "homework");
+  const allHomeworkList = materials.filter((m) => m.type === "homework");
+  const homeworkList = allHomeworkList.filter(m => questTab === "active" ? m.is_active : !m.is_active);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans p-4 md:p-8">
@@ -662,12 +665,29 @@ export default function MaterialsHub() {
 
             {/* HOMEWORK QUESTS */}
             <div className="space-y-4">
-              <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                <span>⭐</span> Homework Quests
-              </h2>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h2 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                  <span>⭐</span> Homework Quests
+                </h2>
+                <div className="flex bg-slate-200/50 p-1 rounded-xl shrink-0 w-full sm:w-auto">
+                   <button 
+                     onClick={() => setQuestTab("active")}
+                     className={`flex-1 sm:w-28 py-1.5 text-xs font-bold rounded-lg transition-all ${questTab === "active" ? "bg-white text-amber-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"}`}
+                   >
+                     Active
+                   </button>
+                   <button 
+                     onClick={() => setQuestTab("closed")}
+                     className={`flex-1 sm:w-28 py-1.5 text-xs font-bold rounded-lg transition-all ${questTab === "closed" ? "bg-white text-slate-600 shadow-sm border border-slate-200" : "text-slate-500 hover:text-slate-700 hover:bg-slate-200"}`}
+                   >
+                     Past / Closed
+                   </button>
+                </div>
+              </div>
+
               {homeworkList.length === 0 ? (
                 <p className="text-slate-400 font-medium text-sm p-4 bg-white rounded-2xl border border-slate-200 border-dashed text-center">
-                  No homework assignments for this filter.
+                  {questTab === "active" ? "No active quests at the moment." : "No closed quests found."}
                 </p>
               ) : (
                 homeworkList.map((item) => (
