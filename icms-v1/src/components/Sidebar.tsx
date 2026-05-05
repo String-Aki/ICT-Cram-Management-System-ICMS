@@ -72,7 +72,7 @@ const handleSignOut = async () => {
         </div>
         <div className="hidden md:block">
           <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">
-            ICMS
+            ICT Cram
           </h1>
           <p className="text-blue-500 font-bold text-[10px] tracking-[0.2em] uppercase mt-1">
             Admin Portal

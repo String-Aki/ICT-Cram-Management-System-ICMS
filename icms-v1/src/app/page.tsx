@@ -64,7 +64,7 @@ export default function AdminAuthPage() {
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-black tracking-tight mb-4 leading-tight">
-            ICMS Academy <br />
+            ICT CRAM <br />
             <span className="text-indigo-500">Terminal</span>
           </h1>
           
