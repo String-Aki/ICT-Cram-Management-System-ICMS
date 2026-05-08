@@ -96,14 +96,14 @@ export default function HallOfFame() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans flex overflow-hidden">
+    <div className="min-h-screen bg-slate-50 print:bg-white font-sans flex overflow-hidden">
       {/* GLOBAL PRINT STYLES */}
       <style
         dangerouslySetInnerHTML={{
           __html: `
         @media print {
           @page { size: A4 portrait; margin: 0; }
-          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          body { -webkit-print-color-adjust: exact; print-color-adjust: exact; background: white !important; }
         }
       `,
         }}
@@ -353,7 +353,7 @@ export default function HallOfFame() {
               className="aspect-square flex flex-col items-center justify-center"
             >
               <div
-                className={`w-[55mm] h-[55mm] rounded-full border-[6px] ${job.item.border} ${job.item.bg} flex flex-col items-center justify-center relative overflow-hidden shadow-sm`}
+                className={`w-[55mm] h-[55mm] rounded-[55px] border-[1px] ${job.item.border} ${job.item.bg} flex flex-col items-center justify-center relative overflow-hidden shadow-sm`}
               >
                 <div
                   className={`absolute -bottom-6 -right-6 text-[80px] opacity-10 select-none ${job.item.text}`}
