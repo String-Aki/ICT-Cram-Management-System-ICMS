@@ -509,7 +509,7 @@ export default function StudentsHub() {
           </button>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-visible">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center h-64">
               <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin mb-4"></div>
@@ -528,7 +528,7 @@ export default function StudentsHub() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto custom-scrollbar">
+            <div className="custom-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-slate-50 text-slate-400 text-xs uppercase tracking-widest border-b border-slate-100">
@@ -544,7 +544,7 @@ export default function StudentsHub() {
                   {filteredStudents.map((student) => (
                     <tr
                       key={student.id}
-                      className={`transition-colors hover:bg-slate-50 ${!student.is_active ? "opacity-60 bg-slate-50/50" : ""}`}
+                      className={`transition-colors hover:bg-slate-50 ${!student.is_active ? "bg-slate-100/70 text-slate-400" : ""}`}
                     >
                       <td className="p-4">
                         <div className="flex items-center gap-3">

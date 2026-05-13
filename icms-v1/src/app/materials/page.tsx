@@ -13,6 +13,8 @@ export default function MaterialsHub() {
   const [availableGrades, setAvailableGrades] = useState<string[]>([]);
   const [allActiveStudents, setAllActiveStudents] = useState<any[]>([]);
   const [selectedTargetStudents, setSelectedTargetStudents] = useState<string[]>([]);
+  const [targetStudentSearch, setTargetStudentSearch] = useState("");
+  const [studentPickerTab, setStudentPickerTab] = useState<"grade" | "all">("grade");
 
   const [isAdding, setIsAdding] = useState(false);
   const [newType, setNewType] = useState<"material" | "homework">("material");
@@ -116,6 +118,8 @@ export default function MaterialsHub() {
       setNewGrade("");
       setNewDeadline("");
       setSelectedTargetStudents([]);
+      setTargetStudentSearch("");
+      setStudentPickerTab("grade");
       fetchMaterials();
     } catch (err) {
       console.error("Error adding material:", err);
@@ -173,7 +177,9 @@ export default function MaterialsHub() {
       .eq("is_active", true)
       .order("full_name", { ascending: true });
 
-    if (material.grade_batch !== "All") {
+    // Only filter by grade if there are NO individual target_students
+    // (cross-grade targets need the full student list)
+    if (material.grade_batch !== "All" && (!material.target_students || material.target_students.length === 0)) {
       query = query.eq("grade_batch", material.grade_batch);
     }
 
@@ -348,33 +354,131 @@ export default function MaterialsHub() {
                     </button>
                   )}
                 </div>
-                {newGrade && newGrade !== "All" ? (
-                  <div className="max-h-40 overflow-y-auto mt-2 border-2 border-slate-200 rounded-xl p-2 bg-slate-50 space-y-1 custom-scrollbar">
-                    {allActiveStudents.filter(s => s.grade_batch === newGrade).map(student => (
-                      <label key={student.id} className="flex items-center gap-3 text-sm p-2 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={selectedTargetStudents.includes(student.id)}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSelectedTargetStudents([...selectedTargetStudents, student.id]);
-                            } else {
-                              setSelectedTargetStudents(selectedTargetStudents.filter(id => id !== student.id));
-                            }
-                          }}
-                          className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                        />
-                        <span className="font-bold text-slate-700">{SNT(student.full_name)}</span>
-                      </label>
-                    ))}
-                    {allActiveStudents.filter(s => s.grade_batch === newGrade).length === 0 && (
-                      <p className="text-xs text-slate-500 p-2 font-medium">No students found for Grade {newGrade}.</p>
-                    )}
-                  </div>
+
+                {/* Tab switcher: By Grade / All Students */}
+                <div className="flex bg-slate-100 p-0.5 rounded-lg mt-1 mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setStudentPickerTab("grade")}
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all ${studentPickerTab === "grade" ? "bg-white text-slate-700 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                  >
+                    By Grade
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setStudentPickerTab("all"); if (!newGrade) setNewGrade("All"); }}
+                    className={`flex-1 py-1.5 text-[11px] font-bold rounded-md transition-all ${studentPickerTab === "all" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-400 hover:text-slate-600"}`}
+                  >
+                    All Students
+                  </button>
+                </div>
+
+                {studentPickerTab === "grade" ? (
+                  /* BY GRADE TAB — existing behaviour */
+                  newGrade && newGrade !== "All" ? (
+                    <div className="max-h-40 overflow-y-auto border-2 border-slate-200 rounded-xl p-2 bg-slate-50 space-y-1 custom-scrollbar">
+                      {allActiveStudents.filter(s => s.grade_batch === newGrade).map(student => (
+                        <label key={student.id} className="flex items-center gap-3 text-sm p-2 hover:bg-slate-200 rounded-lg cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={selectedTargetStudents.includes(student.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setSelectedTargetStudents([...selectedTargetStudents, student.id]);
+                              } else {
+                                setSelectedTargetStudents(selectedTargetStudents.filter(id => id !== student.id));
+                              }
+                            }}
+                            className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                          />
+                          <span className="font-bold text-slate-700">{SNT(student.full_name)}</span>
+                        </label>
+                      ))}
+                      {allActiveStudents.filter(s => s.grade_batch === newGrade).length === 0 && (
+                        <p className="text-xs text-slate-500 p-2 font-medium">No students found for Grade {newGrade}.</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-500 p-3 bg-slate-50 rounded-xl border border-slate-200 font-medium">
+                      Select a specific Target Grade above to view and target individual students.
+                    </p>
+                  )
                 ) : (
-                  <p className="text-xs text-slate-500 p-3 bg-slate-50 rounded-xl border border-slate-200 font-medium">
-                    Select a specific Target Grade above to view and target individual students.
-                  </p>
+                  /* ALL STUDENTS TAB — new cross-grade picker */
+                  <div className="border-2 border-indigo-200 rounded-xl bg-indigo-50/30 overflow-hidden">
+                    <div className="p-2 border-b border-indigo-100">
+                      <input
+                        type="text"
+                        value={targetStudentSearch}
+                        onChange={(e) => setTargetStudentSearch(e.target.value)}
+                        placeholder="🔍 Search student by name..."
+                        className="w-full p-2 text-sm border border-slate-200 rounded-lg outline-none focus:border-indigo-400 font-medium bg-white"
+                      />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+                      {(() => {
+                        const searchLower = targetStudentSearch.toLowerCase();
+                        const filtered = allActiveStudents.filter(s =>
+                          !targetStudentSearch || s.full_name.toLowerCase().includes(searchLower)
+                        );
+                        const grouped = filtered.reduce((acc: Record<string, any[]>, s) => {
+                          const g = s.grade_batch || "Unassigned";
+                          if (!acc[g]) acc[g] = [];
+                          acc[g].push(s);
+                          return acc;
+                        }, {});
+                        const sortedGrades = Object.keys(grouped).sort();
+
+                        if (filtered.length === 0) {
+                          return <p className="text-xs text-slate-500 p-2 font-medium text-center">No students match your search.</p>;
+                        }
+
+                        return sortedGrades.map(grade => (
+                          <div key={grade}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest bg-indigo-100 px-2 py-0.5 rounded">
+                                Grade {grade}
+                              </span>
+                              <div className="flex-1 h-px bg-indigo-100"></div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const gradeIds = grouped[grade].map((s: any) => s.id);
+                                  const allSelected = gradeIds.every((id: string) => selectedTargetStudents.includes(id));
+                                  if (allSelected) {
+                                    setSelectedTargetStudents(selectedTargetStudents.filter(id => !gradeIds.includes(id)));
+                                  } else {
+                                    const newIds = gradeIds.filter((id: string) => !selectedTargetStudents.includes(id));
+                                    setSelectedTargetStudents([...selectedTargetStudents, ...newIds]);
+                                  }
+                                }}
+                                className="text-[9px] font-bold text-indigo-500 hover:text-indigo-700 hover:underline"
+                              >
+                                {grouped[grade].every((s: any) => selectedTargetStudents.includes(s.id)) ? "Deselect All" : "Select All"}
+                              </button>
+                            </div>
+                            {grouped[grade].map((student: any) => (
+                              <label key={student.id} className="flex items-center gap-3 text-sm p-2 hover:bg-indigo-100/50 rounded-lg cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedTargetStudents.includes(student.id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedTargetStudents([...selectedTargetStudents, student.id]);
+                                    } else {
+                                      setSelectedTargetStudents(selectedTargetStudents.filter(id => id !== student.id));
+                                    }
+                                  }}
+                                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                />
+                                <span className="font-bold text-slate-700">{SNT(student.full_name)}</span>
+                              </label>
+                            ))}
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
                 )}
               </div>
 
@@ -425,7 +529,7 @@ export default function MaterialsHub() {
               <div className="flex gap-3 pt-3 shrink-0 border-t border-slate-100">
                 <button
                   type="button"
-                  onClick={() => setIsAdding(false)}
+                  onClick={() => { setIsAdding(false); setTargetStudentSearch(""); setStudentPickerTab("grade"); }}
                   className="flex-1 py-3 px-4 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200"
                 >
                   Cancel
@@ -650,7 +754,7 @@ export default function MaterialsHub() {
                       {/* THE FIX: Formatting "All" beautifully */}
                       <span className="bg-slate-100 text-slate-600 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border border-slate-200 mb-2 inline-block">
                         {item.target_students && item.target_students.length > 0 
-                          ? `Grade ${item.grade_batch} (${item.target_students.length} Target${item.target_students.length > 1 ? 's' : ''})`
+                          ? `${item.target_students.length} Targeted Student${item.target_students.length > 1 ? 's' : ''}`
                           : item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                       </span>
                       <h3 className="font-bold text-slate-800 text-lg line-clamp-1">
@@ -722,7 +826,7 @@ export default function MaterialsHub() {
                             className={`${item.is_active ? "bg-amber-100 text-amber-800 border-amber-200" : "bg-slate-100 text-slate-600 border-slate-200"} text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border`}
                           >
                             {item.target_students && item.target_students.length > 0 
-                              ? `Grade ${item.grade_batch} (${item.target_students.length} Target${item.target_students.length > 1 ? 's' : ''})`
+                              ? `${item.target_students.length} Targeted Student${item.target_students.length > 1 ? 's' : ''}`
                               : item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                           </span>
                           {item.is_active ? (
