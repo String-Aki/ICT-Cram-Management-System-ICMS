@@ -34,6 +34,7 @@ export default function AttendanceHub() {
   const [manualModal, setManualModal] = useState(false);
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [manualStatus, setManualStatus] = useState<"present" | "absent">("present");
+  const [sessionCount, setSessionCount] = useState<number>(1);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const getNowDate = () => new Date().toISOString().split("T")[0];
@@ -164,52 +165,63 @@ export default function AttendanceHub() {
       const student = activeStudents.find((s) => s.id === selectedStudentId);
       if (!student) throw new Error("Student not found");
 
-      const timestamp = new Date(`${manualDate}T${manualTime}:00`).toISOString();
+      const baseTime = new Date(`${manualDate}T${manualTime}:00`);
       const dayStart = new Date(`${manualDate}T00:00:00`).toISOString();
       const dayEnd = new Date(`${manualDate}T23:59:59`).toISOString();
 
-      const { data: existing } = await supabase
+      const { data: existingLogs } = await supabase
         .from("attendance_logs")
         .select("id")
         .eq("student_id", student.id)
         .gte("scanned_at", dayStart)
-        .lte("scanned_at", dayEnd)
-        .single();
+        .lte("scanned_at", dayEnd);
 
-      if (existing) {
-        alert(`A log already exists for this student on ${manualDate}.`);
-        setIsProcessing(false);
-        return;
+      if (existingLogs && existingLogs.length > 0) {
+        const confirmMultiple = window.confirm(
+          `This student already has ${existingLogs.length} attendance record(s) on ${manualDate}. Do you want to log additional session(s)?`
+        );
+        if (!confirmMultiple) {
+          setIsProcessing(false);
+          return;
+        }
       }
 
-      await supabase.from("attendance_logs").insert([{
-        student_id: student.id,
-        scanned_at: timestamp,
-        status: manualStatus === "absent" ? "absent" : "manual",
-      }]);
+      const logPayload = Array.from({ length: sessionCount }).map((_, i) => {
+        const adjustedTime = new Date(baseTime);
+        adjustedTime.setMinutes(adjustedTime.getMinutes() + i);
+        return {
+          student_id: student.id,
+          scanned_at: adjustedTime.toISOString(),
+          status: manualStatus === "absent" ? "absent" : "manual",
+        };
+      });
+
+      await supabase.from("attendance_logs").insert(logPayload);
 
       // Only award XP for present entries
       if (manualStatus === "present") {
+        const totalXp = 10 * sessionCount;
         await supabase.from("xp_transactions").insert([{
           student_id: student.id,
-          amount: 10,
-          reason: "Manual Class Check-In",
+          amount: totalXp,
+          reason: `Manual Class Check-In (${sessionCount} session${sessionCount > 1 ? 's' : ''})`,
         }]);
         await supabase
           .from("students")
-          .update({ total_xp: student.total_xp + 10, cycle_classes: (student.cycle_classes || 0) + 1 })
+          .update({ total_xp: student.total_xp + totalXp, cycle_classes: (student.cycle_classes || 0) + sessionCount })
           .eq("id", student.id);
       } else {
         // Absent — still counts toward total classes, no XP
         await supabase
           .from("students")
-          .update({ cycle_classes: (student.cycle_classes || 0) + 1 })
+          .update({ cycle_classes: (student.cycle_classes || 0) + sessionCount })
           .eq("id", student.id);
       }
 
       setManualModal(false);
       setSelectedStudentId("");
       setManualStatus("present");
+      setSessionCount(1);
       setManualDate(getNowDate());
       setManualTime(getNowTime());
       fetchData();
@@ -318,14 +330,30 @@ export default function AttendanceHub() {
                 </button>
               </div>
 
+              {/* Number of Sessions */}
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2">
+                  Number of Sessions
+                </label>
+                <select
+                  value={sessionCount}
+                  onChange={(e) => setSessionCount(Number(e.target.value))}
+                  className="w-full p-4 border-2 border-slate-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-500/20 outline-none transition-all font-bold text-slate-800"
+                >
+                  {[1, 2, 3, 4].map(num => (
+                    <option key={num} value={num}>{num} Session{num > 1 ? 's' : ''}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className={`p-4 rounded-xl border text-sm font-medium ${
                 manualStatus === "absent"
                   ? "bg-red-50 border-red-100 text-red-800"
                   : "bg-blue-50 border-blue-100 text-blue-800"
               }`}>
                 {manualStatus === "absent"
-                  ? <>This will be logged as <strong className="font-black">absent</strong>. No XP will be awarded.</>
-                  : <>They will receive <strong className="font-black">+10 Base XP</strong> and their cycle counter will increment by 1.</>
+                  ? <>This will be logged as <strong className="font-black">{sessionCount} absent session{sessionCount > 1 ? 's' : ''}</strong>. No XP will be awarded.</>
+                  : <>They will receive <strong className="font-black">+{10 * sessionCount} Base XP</strong> and their cycle counter will increment by {sessionCount}.</>
                 }
               </div>
 
