@@ -58,7 +58,7 @@ function QuestsRegistryContent() {
         const activeStudentId = localStorage.getItem("icms_active_student");
         const { data: student } = await supabase
           .from("students")
-          .select("grade_batch")
+          .select("grade_batch, medium")
           .eq("id", activeStudentId)
           .single();
 
@@ -66,6 +66,7 @@ function QuestsRegistryContent() {
           .from("class_materials")
           .select("*")
           .in("grade_batch", [student?.grade_batch, "All"])
+          .in("medium", [student?.medium || "All", "All"])
           .eq("type", "homework")
           .eq("is_active", true)
           .order("created_at", { ascending: false });

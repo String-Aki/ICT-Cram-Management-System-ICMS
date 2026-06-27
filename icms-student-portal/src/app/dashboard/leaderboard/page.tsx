@@ -16,6 +16,8 @@ export default function LeaderboardPage() {
   
   const [activeStudentId, setActiveStudentId] = useState<string | null>(null);
   const [gradeBatch, setGradeBatch] = useState<string>("");
+  const [studentMedium, setStudentMedium] = useState<string>("");
+  const [arenaScope, setArenaScope] = useState<"Medium" | "Global">("Medium");
   const [leaders, setLeaders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,18 +33,25 @@ export default function LeaderboardPage() {
       try {
         const { data: me, error: meError } = await supabase
           .from("students")
-          .select("grade_batch")
+          .select("grade_batch, medium")
           .eq("id", studentId)
           .single();
 
         if (meError) throw meError;
         setGradeBatch(me.grade_batch);
+        setStudentMedium(me.medium);
 
-        const { data: leaderboardData, error: leaderError } = await supabase
+        let query = supabase
           .from("students")
           .select("id, full_name, total_xp, card_variant")
           .eq("grade_batch", me.grade_batch)
-          .eq("is_active", true)
+          .eq("is_active", true);
+
+        if (arenaScope === "Medium" && me.medium) {
+          query = query.eq("medium", me.medium);
+        }
+
+        const { data: leaderboardData, error: leaderError } = await query
           .order("total_xp", { ascending: false })
           .limit(10);
 
@@ -57,7 +66,7 @@ export default function LeaderboardPage() {
     };
 
     fetchLeaderboard();
-  }, [router]);
+  }, [router, arenaScope]);
 
   if (isLoading) {
     return (
@@ -135,9 +144,26 @@ export default function LeaderboardPage() {
           <h1 className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-400 tracking-tight drop-shadow-[0_0_15px_rgba(129,140,248,0.3)] mb-2">
             The Arena
           </h1>
-          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-xs">
-            {gradeBatch} Division
+          <p className="text-slate-400 font-bold uppercase tracking-[0.3em] text-xs mb-6">
+            {gradeBatch} Division {arenaScope === "Medium" ? `(${studentMedium === "T" ? "Tamil" : "English"} Medium)` : "(Global Arena)"}
           </p>
+
+          <div className="flex justify-center mb-4">
+            <div className="inline-flex bg-white/5 p-1 rounded-xl border border-white/10 backdrop-blur-md">
+              <button
+                onClick={() => setArenaScope("Medium")}
+                className={`px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${arenaScope === "Medium" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+              >
+                Medium Specific
+              </button>
+              <button
+                onClick={() => setArenaScope("Global")}
+                className={`px-6 py-2 rounded-lg text-xs font-bold uppercase tracking-widest transition-all ${arenaScope === "Global" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+              >
+                Global Arena
+              </button>
+            </div>
+          </div>
         </div>
 
         {leaders.length === 0 ? (

@@ -24,7 +24,7 @@ export default function LibraryPage() {
       try {
         const { data: student, error: studentError } = await supabase
           .from("students")
-          .select("grade_batch")
+          .select("grade_batch, medium")
           .eq("id", studentId)
           .single();
 
@@ -35,6 +35,7 @@ export default function LibraryPage() {
           .from("class_materials")
           .select("*")
           .in("grade_batch", [student.grade_batch, "All"])
+          .in("medium", [student.medium || "All", "All"])
           .neq("type", "homework")
           .eq("is_active", true)
           .order("created_at", { ascending: false });

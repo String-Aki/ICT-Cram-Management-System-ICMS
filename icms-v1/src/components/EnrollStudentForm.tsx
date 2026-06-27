@@ -84,6 +84,7 @@ export default function EnrollStudentForm() {
         .insert([{
             full_name: fullName,
             grade_batch: gradeBatch,
+            medium: medium,
             qr_code: finalShortId,
             card_variant: rolledVariant,
             enrollment_date: enrollDate,

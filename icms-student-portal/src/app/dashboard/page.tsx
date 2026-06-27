@@ -39,7 +39,7 @@ export default function StudentDashboard() {
         const { data: studentData, error: studentError } = await supabase
           .from("students")
           .select(
-            "id, full_name, qr_code, total_xp, card_variant, cycle_classes, grade_batch",
+            "id, full_name, qr_code, total_xp, card_variant, cycle_classes, grade_batch, medium",
           )
           .eq("id", activeStudentId)
           .single();
@@ -51,6 +51,7 @@ export default function StudentDashboard() {
           .from("class_materials")
           .select("*")
           .in("grade_batch", [studentData.grade_batch, "All"])
+          .in("medium", [studentData.medium || "All", "All"])
           .eq("type", "homework")
           .eq("is_active", true)
           .order("created_at", { ascending: false });

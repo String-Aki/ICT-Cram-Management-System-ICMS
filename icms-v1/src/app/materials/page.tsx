@@ -10,6 +10,7 @@ export default function MaterialsHub() {
   const [isLoading, setIsLoading] = useState(true);
 
   const [selectedGrade, setSelectedGrade] = useState<string>("All");
+  const [selectedMediumFilter, setSelectedMediumFilter] = useState<"All" | "E" | "T">("All");
   const [availableGrades, setAvailableGrades] = useState<string[]>([]);
   const [allActiveStudents, setAllActiveStudents] = useState<any[]>([]);
   const [selectedTargetStudents, setSelectedTargetStudents] = useState<string[]>([]);
@@ -22,6 +23,7 @@ export default function MaterialsHub() {
   const [newDescription, setNewDescription] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [newGrade, setNewGrade] = useState("");
+  const [newMedium, setNewMedium] = useState<"All" | "E" | "T">("All");
   const [newXp, setNewXp] = useState(50);
   const [newDeadline, setNewDeadline] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,7 +38,7 @@ export default function MaterialsHub() {
 
   useEffect(() => {
     fetchMaterials();
-  }, [selectedGrade]);
+  }, [selectedGrade, selectedMediumFilter]);
 
   const fetchMaterials = async () => {
     setIsLoading(true);
@@ -64,6 +66,9 @@ export default function MaterialsHub() {
       // THE FIX: Fetch materials for the selected grade OR materials marked for "All"
       query = query.in("grade_batch", [selectedGrade, "All"]);
     }
+    if (selectedMediumFilter !== "All") {
+      query = query.in("medium", [selectedMediumFilter, "All"]);
+    }
 
     const { data, error } = await query;
     if (data) setMaterials(data);
@@ -82,6 +87,7 @@ export default function MaterialsHub() {
           type: newType,
           resource_url: newUrl || null,
           grade_batch: newGrade,
+          medium: newMedium,
           xp_reward: newType === "homework" ? newXp : 0,
           deadline: newType === "homework" && newDeadline ? newDeadline : null,
           target_students: selectedTargetStudents.length > 0 ? selectedTargetStudents : null,
@@ -116,6 +122,7 @@ export default function MaterialsHub() {
       setNewDescription("");
       setNewUrl("");
       setNewGrade("");
+      setNewMedium("All");
       setNewDeadline("");
       setSelectedTargetStudents([]);
       setTargetStudentSearch("");
@@ -322,6 +329,20 @@ export default function MaterialsHub() {
                     placeholder={newType === "material" ? "e.g. 10 or 'All'" : "e.g. 10"}
                     className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-bold"
                   />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-bold text-slate-700 mb-1">
+                    Medium
+                  </label>
+                  <select
+                    value={newMedium}
+                    onChange={(e) => setNewMedium(e.target.value as "All" | "E" | "T")}
+                    className="w-full p-3 border-2 border-slate-200 rounded-xl outline-none focus:border-blue-500 font-bold bg-white text-slate-700"
+                  >
+                    <option value="All">All Mediums</option>
+                    <option value="E">English</option>
+                    <option value="T">Tamil</option>
+                  </select>
                 </div>
                 {newType === "homework" && (
                   <div className="w-1/3">
@@ -697,6 +718,30 @@ export default function MaterialsHub() {
               Grade {grade}
             </button>
           ))}
+          
+          <div className="h-6 w-px bg-slate-300 mx-2 shrink-0 hidden md:block"></div>
+          
+          <span className="text-xs font-bold text-slate-400 uppercase tracking-widest shrink-0 mr-2">
+            Medium:
+          </span>
+          <button
+            onClick={() => setSelectedMediumFilter("All")}
+            className={`px-4 py-2 rounded-xl font-bold text-sm shrink-0 transition-all ${selectedMediumFilter === "All" ? "bg-slate-800 text-white shadow-md" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+          >
+            All
+          </button>
+          <button
+            onClick={() => setSelectedMediumFilter("E")}
+            className={`px-4 py-2 rounded-xl font-bold text-sm shrink-0 transition-all flex items-center gap-2 ${selectedMediumFilter === "E" ? "bg-indigo-600 text-white shadow-md" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+          >
+            English
+          </button>
+          <button
+            onClick={() => setSelectedMediumFilter("T")}
+            className={`px-4 py-2 rounded-xl font-bold text-sm shrink-0 transition-all flex items-center gap-2 ${selectedMediumFilter === "T" ? "bg-indigo-600 text-white shadow-md" : "bg-white text-slate-600 border border-slate-200 hover:bg-slate-50"}`}
+          >
+            Tamil
+          </button>
         </div>
 
         {isLoading ? (
@@ -757,6 +802,11 @@ export default function MaterialsHub() {
                           ? `${item.target_students.length} Targeted Student${item.target_students.length > 1 ? 's' : ''}`
                           : item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                       </span>
+                      {item.medium && item.medium !== "All" && (
+                        <span className={`ml-2 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border mb-2 inline-block ${item.medium === "E" ? "bg-indigo-50 text-indigo-600 border-indigo-200" : "bg-purple-50 text-purple-600 border-purple-200"}`}>
+                          {item.medium === "E" ? "English" : "Tamil"} Medium
+                        </span>
+                      )}
                       <h3 className="font-bold text-slate-800 text-lg line-clamp-1">
                         {item.title}
                       </h3>
@@ -829,6 +879,11 @@ export default function MaterialsHub() {
                               ? `${item.target_students.length} Targeted Student${item.target_students.length > 1 ? 's' : ''}`
                               : item.grade_batch === "All" ? "All Grades" : `Grade ${item.grade_batch}`}
                           </span>
+                          {item.medium && item.medium !== "All" && (
+                            <span className={`ml-2 text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded border mb-2 inline-block ${item.medium === "E" ? "bg-indigo-50 text-indigo-600 border-indigo-200" : "bg-purple-50 text-purple-600 border-purple-200"}`}>
+                              {item.medium === "E" ? "English" : "Tamil"} Medium
+                            </span>
+                          )}
                           {item.is_active ? (
                             <span className="text-xs font-black text-amber-500">
                               +{item.xp_reward} XP
